@@ -1,0 +1,35 @@
+[tools]
+node = "22"
+go = "1.23"
+
+[env]
+DATABASE_URL = "postgres://library:library@localhost:5432/alvorada_library"
+BACKEND_PORT = "8080"
+FRONTEND_PORT = "5173"
+
+[tasks.setup]
+description = "Setup project dependencies"
+run = """
+cd frontend && npm install
+cd ../backend && go mod download
+"""
+
+[tasks.dev-frontend]
+description = "Run frontend dev server"
+run = "cd frontend && npm run dev"
+
+[tasks.dev-backend]
+description = "Run Go backend"
+run = "cd backend && go run main.go"
+
+[tasks.db-up]
+description = "Start database"
+run = "docker-compose up -d postgres"
+
+[tasks.db-down]
+description = "Stop database"
+run = "docker-compose down"
+
+[tasks.dev]
+description = "Start full development environment"
+run = "docker-compose up -d postgres && echo 'Database started. Run mise run dev-backend and mise run dev-frontend in separate terminals'"
