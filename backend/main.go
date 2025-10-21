@@ -8,6 +8,7 @@ import(
 	_"github.com/lib/pq"
 	"log"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 )
 
 var db *sql.DB
@@ -94,6 +95,12 @@ func main(){
 	r.HandleFunc("/api/books",getBooks).Methods("GET")
 	r.HandleFunc("/api/books/{id}", getBook).Methods("GET")
 
+	handler := cors.New(cors.Options{
+		AllowedOrigins: []string{"http:localhost:5173"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type"},
+	}).Handler(r)
+
 	fmt.Println("Server starting on port 8080...")
-	http.ListenAndServe(":8080", r)
+	http.ListenAndServe(":8080", handler)
 }
