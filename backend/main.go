@@ -9,6 +9,7 @@ import(
 	"log"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+	"strconv"
 )
 
 var db *sql.DB
@@ -52,8 +53,36 @@ func getBook(w http.ResponseWriter, req *http.Request){
 
 func getBooks(w http.ResponseWriter, req *http.Request){
 	w.Header().Set("Content-Type", "application/json")
-	query := "SELECT id, nome, categoria, numero_copias, autor FROM books ORDER BY nome"
-	rows, err := db.Query(query)
+
+	page := req.URL.Query().Get("page")
+	limitStr := req.URL.Query().Get("Limit")
+
+	pageNum := 1
+	limit := 20
+
+	if page != ""{
+		if p, err := strconv.Atoi(page); err == nil && p>0 {
+			pageNum = p
+		}
+	}
+
+	if limitStr != ""{
+		if l, err := strconv.Atoi(limitStr); err == nil && l>0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	offset := (pageNum - 1) * limit
+
+	var totalBooks int
+	err := db.QueryRow("SELECT COUNT(*) FROM books").Scan(&totalBooks)
+	if err != nil{
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	query := "SELECT id, nome, categoria, numero_copias, autor FROM books ORDER BY nome LIMIT $1 OFFSET $2"
+	rows, err := db.Query(query, limit, offset)
 
 	if err != nil{
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -72,7 +101,17 @@ func getBooks(w http.ResponseWriter, req *http.Request){
 		books = append(books,book)
 	}
 
-	json.NewEncoder(w).Encode(books)
+	totalPages := (totalBooks + limit - 1) / limit
+
+	response := map[string]interface{}{
+		"books": books, 
+		"currentPage": pageNum,
+		"totalPages": totalPages,
+		"totalBooks": totalBooks,
+		"limit": limit,
+	}
+
+	json.NewEncoder(w).Encode(response)
 }
 
 func main(){
