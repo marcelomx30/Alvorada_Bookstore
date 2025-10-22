@@ -19,6 +19,10 @@ type BookResponse struct{
 	Total int `json:"total"`
 }
 
+type CategoryCount struct{
+	Name string `json:"name"`
+	Quantity int `json:quantity`
+}
 
 type Book struct{
 	ID int `json:"id"`
@@ -48,7 +52,7 @@ func getPaginationParams(req *http.Request)(pageNum int, limit int, offset int){
 			limit = l
 		}
 	}
-	offset := (pageNum - 1) * limit
+	offset = (pageNum - 1) * limit
 	return pageNum, limit, offset
 }
 
