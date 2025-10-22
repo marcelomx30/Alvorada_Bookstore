@@ -7,8 +7,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#6366f1',
-        secondary: '#8b5cf6',
+        // Colors from your logo
+        'alvorada-blue': '#5B7FA6',
+        'alvorada-coral': '#C96850',
+        'alvorada-gold': '#D4A86A',
+        'alvorada-blue-dark': '#4A6685',
+        'alvorada-coral-dark': '#A85240',
       },
     },
   },
