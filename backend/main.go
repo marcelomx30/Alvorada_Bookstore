@@ -20,8 +20,8 @@ type BookResponse struct{
 }
 
 type CategoryCount struct{
-	Name string `json:"name"`
-	Quantity int `json:quantity`
+	Categoria string `json:"name"`
+	Count int `json:count`
 }
 
 type Book struct{
@@ -95,6 +95,48 @@ func getBook(w http.ResponseWriter, req *http.Request){
 }
 
 
+func searchByCategory(w http.ResponseWriter, req *http.Request){
+	w.Header().Set("Content-Type", "application/json")
+	pageNum, limit, offset := getPaginationParams(req)
+	vars := mux.Vars(req)
+
+	category := vars["category"]
+	if category == ""{
+		http.Error(w, "Category is required", http.StatusBadRequest)
+		return
+	}
+	
+	var totalBooks int
+	err := db.QueryRow("SELECT COUNT(*) FROM books WHERE categoria = $1", category).Scan(&totalBooks)
+	if err != nil{
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	query := "SELECT id, nome, categoria, numero_copias, autor FROM books WHERE categoria = $1 ORDER BY nome LIMIT $2 OFFSET $3"
+	rows, err := db.Query(query, category, limit, offset)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	books := []Book{}
+	for rows.Next(){
+		var book Book
+		err := rows.Scan(&book.ID, &book.Nome, &book.Categoria, &book.NumeroCopias, &book.Autor)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		books = append(books, book)
+	}
+	additionalData := map[string]interface{}{
+		"category": category,
+	}
+	response := createPaginatedResponse(books, pageNum, totalBooks, limit, additionalData)
+	json.NewEncoder(w).Encode(response)	
+}
+
 func getBooks(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	
@@ -132,6 +174,34 @@ func getBooks(w http.ResponseWriter, req *http.Request) {
 	// Use helper function to create response
 	response := createPaginatedResponse(books, pageNum, totalBooks, limit, nil)
 	json.NewEncoder(w).Encode(response)
+}
+
+func getCategories(w http.ResponseWriter, req *http.Request){
+	w.Header().Set("Content-Type", "application/json")
+	
+	query := `SELECT categoria, COUNT(*) as count FROM books GROUP BY categoria ORDER BY COUNT(*) DESC`
+
+	rows, err := db.Query(query)
+	if err !=nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+defer rows.Close()
+
+categories := []CategoryCount{}
+
+for rows.Next(){
+	var cat CategoryCount
+	err := rows.Scan(&cat.Categoria, &cat.Count)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	categories = append(categories, cat)
+}
+
+json.NewEncoder(w).Encode(categories)
+
 }
 
 
@@ -228,8 +298,10 @@ func main(){
 	log.Println("✓ Connected to the database successfully ✓")
 
 	r := mux.NewRouter()
+	r.HandleFunc("/api/categories", getCategories).Methods("GET")
 	r.HandleFunc("/api/books",getBooks).Methods("GET")
 	r.HandleFunc("/api/books/search", searchBooks).Methods("GET")
+	r.HandleFunc("/api/books/category/{category}", searchByCategory).Methods("GET")
 	r.HandleFunc("/api/books/{id}", getBook).Methods("GET")
 
 
