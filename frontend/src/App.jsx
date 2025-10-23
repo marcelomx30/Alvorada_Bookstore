@@ -10,19 +10,40 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchType, setSearchType] = useState('all')
   const [isSearching, setIsSearching] = useState(false)
+  const [categories, setCategories] = useState([])
+  const [selectedCategory, setSelectedCategory] = useState(null)
   const booksPerPage = 20
 
+  // Fetch categories on mount
   useEffect(() => {
-    if (isSearching && searchQuery) {
+    fetchCategories()
+  }, [])
+
+  // Fetch books when page or category changes
+  useEffect(() => {
+    if (selectedCategory) {
+      fetchBooksByCategory(currentPage)
+    } else if (isSearching && searchQuery) {
       performSearch(currentPage)
     } else {
       fetchBooks(currentPage)
     }
-  }, [currentPage])
+  }, [currentPage, selectedCategory])
+
+  const fetchCategories = () => {
+    axios.get('http://localhost:8080/api/categories')
+      .then(response => {
+        setCategories(response.data || [])
+      })
+      .catch(error => {
+        console.error('Error fetching categories:', error)
+      })
+  }
 
   const fetchBooks = (page) => {
     setLoading(true)
     setIsSearching(false)
+    setSelectedCategory(null)
     axios.get(`http://localhost:8080/api/books?page=${page}&limit=${booksPerPage}`)
       .then(response => {
         setBooks(response.data.books || [])
@@ -38,6 +59,27 @@ function App() {
       })
   }
 
+  const fetchBooksByCategory = (page) => {
+    if (!selectedCategory) return
+    
+    setLoading(true)
+    setIsSearching(false)
+    
+    axios.get(`http://localhost:8080/api/books/category/${encodeURIComponent(selectedCategory)}?page=${page}&limit=${booksPerPage}`)
+      .then(response => {
+        setBooks(response.data.books || [])
+        setCurrentPage(response.data.currentPage)
+        setTotalPages(response.data.totalPages)
+        setTotalBooks(response.data.totalBooks)
+        setLoading(false)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      })
+      .catch(error => {
+        console.error('Error fetching books by category:', error)
+        setLoading(false)
+      })
+  }
+
   const performSearch = (page) => {
     if (!searchQuery.trim()) {
       fetchBooks(page)
@@ -46,6 +88,7 @@ function App() {
 
     setLoading(true)
     setIsSearching(true)
+    setSelectedCategory(null)
     
     const typeParam = searchType === 'all' ? '' : `&type=${searchType}`
     axios.get(`http://localhost:8080/api/books/search?q=${searchQuery}&page=${page}&limit=${booksPerPage}${typeParam}`)
@@ -72,8 +115,21 @@ function App() {
   const handleClearSearch = () => {
     setSearchQuery('')
     setSearchType('all')
+    setSelectedCategory(null)
     setCurrentPage(1)
     fetchBooks(1)
+  }
+
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category)
+    setSearchQuery('')
+    setIsSearching(false)
+    setCurrentPage(1)
+  }
+
+  const handleClearCategory = () => {
+    setSelectedCategory(null)
+    setCurrentPage(1)
   }
 
   const goToPage = (page) => {
@@ -118,7 +174,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section - Solid Blue */}
+      {/* Hero Section */}
       <header className="bg-alvorada-blue text-white shadow-lg">
         <div className="container mx-auto px-6 py-16">
           <h1 className="text-5xl font-bold mb-4">📚 Biblioteca Alvorada</h1>
@@ -133,7 +189,6 @@ function App() {
         <div className="bg-white rounded-xl shadow-lg p-6">
           <form onSubmit={handleSearch} className="space-y-4">
             <div className="flex flex-col md:flex-row gap-4">
-              {/* Search Input */}
               <div className="flex-1">
                 <input
                   type="text"
@@ -144,7 +199,6 @@ function App() {
                 />
               </div>
 
-              {/* Search Type */}
               <div className="w-full md:w-48">
                 <select
                   value={searchType}
@@ -157,7 +211,6 @@ function App() {
                 </select>
               </div>
 
-              {/* Search Button */}
               <button
                 type="submit"
                 className="px-8 py-3 bg-alvorada-blue text-white rounded-lg hover:bg-alvorada-blue-dark transition-colors font-semibold shadow-md"
@@ -165,7 +218,6 @@ function App() {
                 🔍 Buscar
               </button>
 
-              {/* Clear Button */}
               {isSearching && (
                 <button
                   type="button"
@@ -178,7 +230,6 @@ function App() {
             </div>
           </form>
 
-          {/* Search Info */}
           {isSearching && (
             <div className="mt-4 text-gray-600">
               Buscando por: <span className="font-semibold text-alvorada-blue">"{searchQuery}"</span>
@@ -190,11 +241,47 @@ function App() {
         </div>
       </div>
 
+      {/* Category Filter */}
+      <div className="container mx-auto px-6 pb-8">
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+            📂 Filtrar por Categoria
+            {selectedCategory && (
+              <button
+                onClick={handleClearCategory}
+                className="ml-4 text-sm bg-alvorada-coral text-white px-4 py-1 rounded-full hover:bg-alvorada-coral-dark transition-colors"
+              >
+                ✕ Limpar filtro
+              </button>
+            )}
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((cat) => (
+              <button
+                key={cat.categoria}
+                onClick={() => handleCategorySelect(cat.categoria)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  selectedCategory === cat.categoria
+                    ? 'bg-alvorada-blue text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-alvorada-gold hover:text-white'
+                }`}
+              >
+                {cat.categoria} ({cat.count})
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Main Content */}
       <main className="container mx-auto px-6 pb-12">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-800 mb-2">
-            {isSearching ? 'Resultados da Busca' : 'Catálogo de Livros'}
+            {selectedCategory 
+              ? `📂 Categoria: ${selectedCategory}` 
+              : isSearching 
+                ? '🔍 Resultados da Busca' 
+                : '📚 Catálogo de Livros'}
           </h2>
           <p className="text-gray-600">
             {totalBooks} {totalBooks === 1 ? 'livro' : 'livros'} • Página {currentPage} de {totalPages}
@@ -213,7 +300,6 @@ function App() {
                   key={book.id}
                   className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1"
                 >
-                  {/* Solid Coral Top Bar */}
                   <div className="bg-alvorada-coral h-2"></div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-gray-800 mb-3 line-clamp-2">
@@ -235,7 +321,6 @@ function App() {
                       </p>
                     </div>
 
-                    {/* Solid Blue Button */}
                     <button className="w-full bg-alvorada-blue text-white py-2 rounded-lg hover:bg-alvorada-blue-dark transition-all duration-300 font-semibold">
                       Ver Detalhes
                     </button>
@@ -244,7 +329,6 @@ function App() {
               ))}
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="mt-12 flex flex-col items-center gap-4">
                 <div className="flex items-center gap-2">
@@ -286,9 +370,13 @@ function App() {
         {!loading && books.length === 0 && (
           <div className="text-center py-20">
             <p className="text-gray-500 text-lg">
-              {isSearching ? `Nenhum livro encontrado para "${searchQuery}"` : 'Nenhum livro encontrado'}
+              {selectedCategory 
+                ? `Nenhum livro encontrado na categoria "${selectedCategory}"` 
+                : isSearching 
+                  ? `Nenhum livro encontrado para "${searchQuery}"` 
+                  : 'Nenhum livro encontrado'}
             </p>
-            {isSearching && (
+            {(isSearching || selectedCategory) && (
               <button
                 onClick={handleClearSearch}
                 className="mt-4 px-6 py-2 bg-alvorada-blue text-white rounded-lg hover:bg-alvorada-blue-dark transition-colors shadow-md"
@@ -300,7 +388,6 @@ function App() {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="bg-gray-800 text-white py-8 mt-20">
         <div className="container mx-auto px-6 text-center">
           <p>© 2025 Biblioteca Alvorada - Sistema de Gestão de Livros</p>

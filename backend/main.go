@@ -20,8 +20,8 @@ type BookResponse struct{
 }
 
 type CategoryCount struct{
-	Categoria string `json:"name"`
-	Count int `json:count`
+	Categoria string `json:"categoria"`
+	Count int `json:"count"`
 }
 
 type Book struct{
