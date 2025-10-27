@@ -1,18 +1,27 @@
 package main
 
 import(
-	"fmt"
-	"net/http"
-	"encoding/json"
+	"crypto/rand"
 	"database/sql"
-	_"github.com/lib/pq"
+	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
+	"strconv"
+	"sync"
+	"time"
+	
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
-	"strconv"
+	_ "github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 )
 
-var db *sql.DB
+var (
+	db       *sql.DB 
+	sessions = make(map[string]*Session)
+	mu       sync.RWMutex
+)
 
 type BookResponse struct{
 	Message string 	`json:"message"`
@@ -31,6 +40,255 @@ type Book struct{
 	Autor string `json:"autor"`
 	NumeroCopias int `json:"numero_copias"`
 
+}
+
+type User struct {
+	ID           int       `json:"id"`
+	Name         string    `json:"name"`
+	Email        string    `json:"email"`
+	Phone        string    `json:"phone"`
+	PasswordHash string    `json:"-"`
+	Role         string    `json:"role"`
+	IsActive     bool      `json:"is_active"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type RegisterRequest struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Phone    string `json:"phone"`
+	Password string `json:"password"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type Session struct {
+	UserID int
+	Email  string
+	Role   string
+}
+
+// Generate random session ID
+func generateSessionID() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return fmt.Sprintf("%x", b)
+}
+
+// Get session from cookie
+func getSession(req *http.Request) *Session {
+	cookie, err := req.Cookie("session_id")
+	if err != nil {
+		return nil
+	}
+	
+	mu.RLock()
+	defer mu.RUnlock()
+	return sessions[cookie.Value]
+}
+
+// Create session and set cookie
+func createSession(w http.ResponseWriter, user *User) string {
+	sessionID := generateSessionID()
+	
+	session := &Session{
+		UserID: user.ID,
+		Email:  user.Email,
+		Role:   user.Role,
+	}
+	
+	mu.Lock()
+	sessions[sessionID] = session
+	mu.Unlock()
+	
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    sessionID,
+		Path:     "/",
+		MaxAge:   7 * 24 * 60 * 60,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	
+	return sessionID
+}
+
+// Delete session (logout)
+func deleteSession(w http.ResponseWriter, req *http.Request) {
+	cookie, err := req.Cookie("session_id")
+	if err != nil {
+		return
+	}
+	
+	mu.Lock()
+	delete(sessions, cookie.Value)
+	mu.Unlock()
+	
+	http.SetCookie(w, &http.Cookie{
+		Name:   "session_id",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	})
+}
+
+func register(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	var regReq RegisterRequest
+	err := json.NewDecoder(req.Body).Decode(&regReq)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	
+	// Validate input
+	if regReq.Name == "" || regReq.Email == "" || regReq.Phone == "" || regReq.Password == "" {
+		http.Error(w, "All fields are required", http.StatusBadRequest)
+		return
+	}
+	
+	if len(regReq.Password) < 6 {
+		http.Error(w, "Password must be at least 6 characters", http.StatusBadRequest)
+		return
+	}
+	
+	// Hash password
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(regReq.Password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Error processing password", http.StatusInternalServerError)
+		return
+	}
+	
+	// Insert user into database
+	var userID int
+	err = db.QueryRow(`
+		INSERT INTO users (name, email, phone, password_hash, role)
+		VALUES ($1, $2, $3, $4, 'user')
+		RETURNING id
+	`, regReq.Name, regReq.Email, regReq.Phone, string(passwordHash)).Scan(&userID)
+	
+	if err != nil {
+		// Check if email already exists
+		if err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"` {
+			http.Error(w, "Email already registered", http.StatusConflict)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	// Create user object
+	user := &User{
+		ID:    userID,
+		Name:  regReq.Name,
+		Email: regReq.Email,
+		Phone: regReq.Phone,
+		Role:  "user",
+	}
+	
+	// Create session
+	createSession(w, user)
+	
+	// Return user info
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Registration successful",
+		"user":    user,
+	})
+}
+
+func login(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	var loginReq LoginRequest
+	err := json.NewDecoder(req.Body).Decode(&loginReq)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	
+	// Get user from database
+	var user User
+	err = db.QueryRow(`
+		SELECT id, name, email, phone, password_hash, role, is_active, created_at
+		FROM users
+		WHERE email = $1
+	`, loginReq.Email).Scan(&user.ID, &user.Name, &user.Email, &user.Phone, 
+		&user.PasswordHash, &user.Role, &user.IsActive, &user.CreatedAt)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	// Check if user is active
+	if !user.IsActive {
+		http.Error(w, "Account is disabled", http.StatusForbidden)
+		return
+	}
+	
+	// Compare password
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(loginReq.Password))
+	if err != nil {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+	
+	// Create session
+	createSession(w, &user)
+	
+	// Return user info
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Login successful",
+		"user": map[string]interface{}{
+			"id":    user.ID,
+			"name":  user.Name,
+			"email": user.Email,
+			"phone": user.Phone,
+			"role":  user.Role,
+		},
+	})
+}
+
+func logout(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	deleteSession(w, req)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Logged out successfully",
+	})
+}
+
+func getCurrentUser(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	session := getSession(req)
+	if session == nil {
+		http.Error(w, "Not authenticated", http.StatusUnauthorized)
+		return
+	}
+	
+	// Get fresh user data from database
+	var user User
+	err := db.QueryRow(`
+		SELECT id, name, email, phone, role, is_active, created_at
+		FROM users
+		WHERE id = $1
+	`, session.UserID).Scan(&user.ID, &user.Name, &user.Email, &user.Phone,
+		&user.Role, &user.IsActive, &user.CreatedAt)
+	
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(user)
 }
 
 
@@ -298,6 +556,12 @@ func main(){
 	log.Println("✓ Connected to the database successfully ✓")
 
 	r := mux.NewRouter()
+	//Auth Routes
+	r.HandleFunc("/api/auth/register", register).Methods("POST")
+	r.HandleFunc("/api/auth/login", login).Methods("POST")
+	r.HandleFunc("/api/auth/logout", logout).Methods("POST")
+	r.HandleFunc("/api/auth/me", getCurrentUser).Methods("GET")
+//Book Routes
 	r.HandleFunc("/api/categories", getCategories).Methods("GET")
 	r.HandleFunc("/api/books",getBooks).Methods("GET")
 	r.HandleFunc("/api/books/search", searchBooks).Methods("GET")
@@ -305,12 +569,12 @@ func main(){
 	r.HandleFunc("/api/books/{id}", getBook).Methods("GET")
 
 
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:5173"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Content-Type"},
-		AllowCredentials: true,
-	})
+c := cors.New(cors.Options{
+	AllowedOrigins:   []string{"http://localhost:5173"},
+	AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+	AllowedHeaders:   []string{"Content-Type"},
+	AllowCredentials: true,
+})
 
 	handler := c.Handler(r)
 
