@@ -4,6 +4,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import BookCatalog from './pages/BookCatalog'
+import MyRentals from './pages/MyRentals'
 
 function App() {
   const { user, loading } = useAuth()
@@ -22,6 +23,7 @@ function App() {
       <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
       <Route path="/forgot-password" element={user ? <Navigate to="/" /> : <ForgotPassword />} />
       <Route path="/" element={user ? <BookCatalog /> : <Navigate to="/login" />} />
+      <Route path="/my-rentals" element={user ? <MyRentals /> : <Navigate to="/login" />} />
     </Routes>
   )
 }
