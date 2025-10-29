@@ -66,6 +66,13 @@ type Rental struct {
     Notes            string    `json:"notes"`
 }
 
+type RentalWithBook struct {
+	Rental
+	BookName     string `json:"book_name"`
+	BookAuthor   string `json:"book_author"`
+	BookCategory string `json:"book_category"`
+}
+
 type RegisterRequest struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
