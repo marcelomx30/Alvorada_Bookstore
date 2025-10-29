@@ -677,6 +677,54 @@ func rentBook(w http.ResponseWriter, req *http.Request){
 	json.NewEncoder(w).Encode(response)
 }
 
+func getMyRentals(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	session := getSession(req)
+	if session == nil {
+		http.Error(w, "Not authenticated", http.StatusUnauthorized)
+		return
+	}
+	
+	userID := session.UserID
+	
+	query := `
+		SELECT 
+			r.id, r.user_id, r.book_id, r.rented_at, r.due_date, 
+			r.returned_at, r.status, r.rented_by_admin_id, r.notes,
+			b.nome, b.autor, b.categoria
+		FROM rentals r
+		JOIN books b ON r.book_id = b.id
+		WHERE r.user_id = $1
+		ORDER BY r.rented_at DESC
+	`
+	
+	rows, err := db.Query(query, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	
+	rentals := []RentalWithBook{}
+	
+	for rows.Next() {
+		var rental RentalWithBook
+		err := rows.Scan(
+			&rental.ID, &rental.UserID, &rental.BookID, &rental.RentedAt, &rental.DueDate,
+			&rental.ReturnedAt, &rental.Status, &rental.RentedByAdminID, &rental.Notes,
+			&rental.BookName, &rental.BookAuthor, &rental.BookCategory,
+		)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		rentals = append(rentals, rental)
+	}
+	
+	json.NewEncoder(w).Encode(rentals)
+}
+
 
 func main(){
 	connStr := "postgres://library:library@localhost:5432/alvorada_library?sslmode=disable"
@@ -708,6 +756,8 @@ func main(){
 	r.HandleFunc("/api/books/{id}", getBook).Methods("GET")
 //Rental Routes
 	r.HandleFunc("/api/rentals", rentBook).Methods("POST")
+	r.HandleFunc("/api/rentals/my", getMyRentals).Methods("GET")
+
 
 
 c := cors.New(cors.Options{
