@@ -53,6 +53,19 @@ type User struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
+
+type Rental struct {
+    ID               int       `json:"id"`
+    UserID           int       `json:"user_id"`
+    BookID           int       `json:"book_id"`
+    RentedAt         time.Time `json:"rented_at"`
+    DueDate          string    `json:"due_date"`
+    ReturnedAt       *time.Time `json:"returned_at"`
+    Status           string    `json:"status"`
+    RentedByAdminID  *int      `json:"rented_by_admin_id"`
+    Notes            string    `json:"notes"`
+}
+
 type RegisterRequest struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
