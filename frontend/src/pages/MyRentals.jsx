@@ -27,6 +27,25 @@ function MyRentals() {
     }
   }
 
+  const handleReturnBook = async (rentalId, bookName) => {
+    if (!window.confirm(`Deseja devolver "${bookName}"?`)) {
+      return
+    }
+   
+    try {
+      await axios.put(`http://localhost:8080/api/rentals/${rentalId}/return`, {}, {
+        withCredentials: true
+      })
+    
+      alert('✅ Livro devolvido com sucesso!')
+      fetchMyRentals() // Refresh the list
+    
+    } catch (error) {
+      const errorMsg = error.response?.data || 'Erro ao devolver livro. Tente novamente.'
+      alert(`❌ ${errorMsg}`)
+    }
+  }
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'active':
