@@ -265,7 +265,7 @@ function BookCatalog() {
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">📂 Filtrar por Categoria{selectedCategory && (<button onClick={handleClearCategory} className="ml-4 text-sm bg-alvorada-coral text-white px-4 py-1 rounded-full hover:bg-alvorada-coral-dark transition-colors">✕ Limpar filtro</button>)}</h3>
           <div className="flex flex-wrap gap-2">
-            {categories.map((cat) => (<button key={cat.Categoria} onClick={() => handleCategorySelect(cat.Categoria)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedCategory === cat.Categoria ? 'bg-alvorada-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-alvorada-gold hover:text-white'}`}>{cat.Categoria} ({cat.Count})</button>))}
+            {categories.map((cat) => (<button key={cat.Categoria} onClick={() => handleCategorySelect(cat.Categoria)} className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedCategory === cat.Categoria ? 'bg-alvorada-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-alvorada-gold hover:text-white'}`}>{cat.Categoria} ({cat.count})</button>))}
           </div>
         </div>
       </div>
@@ -289,9 +289,9 @@ function BookCatalog() {
                     <div className="space-y-2 mb-4">
                       <p className="text-gray-600 text-sm"><span className="font-semibold">Autor:</span> {book.autor}</p>
                       <p className="text-gray-600 text-sm"><span className="font-semibold">Categoria:</span> <span className="inline-block bg-alvorada-gold bg-opacity-30 text-alvorada-coral-dark px-3 py-1 rounded-full text-xs font-medium">{book.categoria}</span></p>
-                      <p className="text-gray-600 text-sm"><span className="font-semibold">Cópias disponíveis:</span> {book.numero_copias}</p>
+                      <p className="text-gray-600 text-sm"><span className="font-semibold">Cópias disponíveis:</span> {book.available_copies}</p>
                     </div>
-                    <button onClick={() => handleRentBook(book.id, book.nome)} disabled={rentingBookId === book.id || book.numero_copias === 0} className={`w-full py-2 rounded-lg transition-all duration-300 font-semibold ${rentingBookId === book.id ? 'bg-gray-400 cursor-not-allowed' : book.numero_copias === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-alvorada-blue text-white hover:bg-alvorada-blue-dark'}`}>{rentingBookId === book.id ? 'Alugando...' : book.numero_copias === 0 ? 'Indisponível' : 'Alugar Livro'}</button>
+                    <button onClick={() => handleRentBook(book.id, book.nome)} disabled={rentingBookId === book.id || book.available_copies === 0} className={`w-full py-2 rounded-lg transition-all duration-300 font-semibold ${rentingBookId === book.id ? 'bg-gray-400 cursor-not-allowed' : book.available_copies === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-alvorada-blue text-white hover:bg-alvorada-blue-dark'}`}>{rentingBookId === book.id ? 'Alugando...' : book.available_copies === 0 ? 'Indisponível' : 'Alugar Livro'}</button>
                   </div>
                 </div>
               ))}
