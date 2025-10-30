@@ -29,7 +29,7 @@ type BookResponse struct{
 }
 
 type CategoryCount struct{
-	Categoria string `json:"categoria"`
+	Categoria string `json:"Categoria"`
 	Count int `json:"count"`
 }
 
@@ -39,6 +39,7 @@ type Book struct{
 	Categoria string `json:"categoria"`
 	Autor string `json:"autor"`
 	NumeroCopias int `json:"numero_copias"`
+	Available int `json:"available_copies"`
 
 }
 
@@ -430,7 +431,18 @@ func getBooks(w http.ResponseWriter, req *http.Request) {
 	}
 	
 	// Get paginated books
-	query := "SELECT id, nome, categoria, numero_copias, autor FROM books ORDER BY nome LIMIT $1 OFFSET $2"
+	query := `
+	SELECT 
+		b.id, b.nome, b.categoria, b.autor, b.numero_copias,
+		b.numero_copias - COALESCE((
+			SELECT COUNT(*) FROM rentals r 
+			WHERE r.book_id = b.id AND r.status = 'active'
+		), 0) as available_copies
+	FROM books b 
+	WHERE categoria = $1 
+	ORDER BY nome 
+	LIMIT $2 OFFSET $3
+	`	
 	rows, err := db.Query(query, limit, offset)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -441,7 +453,7 @@ func getBooks(w http.ResponseWriter, req *http.Request) {
 	books := []Book{}
 	for rows.Next() {
 		var book Book
-		err := rows.Scan(&book.ID, &book.Nome, &book.Categoria, &book.NumeroCopias, &book.Autor)
+		err := rows.Scan(&book.ID, &book.Nome, &book.Categoria, &book.NumeroCopias, &book.Autor, &book.Available)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -507,17 +519,50 @@ func searchBooks(w http.ResponseWriter, req *http.Request){
 	
 	switch searchType {
 	case "author":
-		query = "SELECT id, nome, categoria, numero_copias, autor FROM books WHERE autor ILIKE $1 ORDER BY nome LIMIT $2 OFFSET $3"
+		query = `
+			SELECT 
+				b.id, b.nome, b.categoria, b.autor, b.numero_copias,
+				b.numero_copias - COALESCE((
+					SELECT COUNT(*) FROM rentals r 
+					WHERE r.book_id = b.id AND r.status = 'active'
+				), 0) as available_copies
+			FROM books b 
+			WHERE autor ILIKE $1 
+			ORDER BY nome 
+			LIMIT $2 OFFSET $3
+		`
 		countQuery = "SELECT COUNT(*) FROM books WHERE autor ILIKE $1"
 		args = []interface{}{searchPattern, limit, offset}
 		
 	case "title":
-		query = "SELECT id, nome, categoria, numero_copias, autor FROM books WHERE nome ILIKE $1 ORDER BY nome LIMIT $2 OFFSET $3"
+		query = `
+			SELECT 
+				b.id, b.nome, b.categoria, b.autor, b.numero_copias,
+				b.numero_copias - COALESCE((
+					SELECT COUNT(*) FROM rentals r 
+					WHERE r.book_id = b.id AND r.status = 'active'
+				), 0) as available_copies
+			FROM books b 
+			WHERE nome ILIKE $1 
+			ORDER BY nome 
+			LIMIT $2 OFFSET $3
+		`
 		countQuery = "SELECT COUNT(*) FROM books WHERE nome ILIKE $1"
 		args = []interface{}{searchPattern, limit, offset}
 		
 	default:
-		query = "SELECT id, nome, categoria, numero_copias, autor FROM books WHERE nome ILIKE $1 OR autor ILIKE $1 ORDER BY nome LIMIT $2 OFFSET $3"
+		query = `
+			SELECT 
+				b.id, b.nome, b.categoria, b.autor, b.numero_copias,
+				b.numero_copias - COALESCE((
+					SELECT COUNT(*) FROM rentals r 
+					WHERE r.book_id = b.id AND r.status = 'active'
+				), 0) as available_copies
+			FROM books b 
+			WHERE nome ILIKE $1 OR autor ILIKE $1 
+			ORDER BY nome 
+			LIMIT $2 OFFSET $3
+		`
 		countQuery = "SELECT COUNT(*) FROM books WHERE nome ILIKE $1 OR autor ILIKE $1"
 		args = []interface{}{searchPattern, limit, offset}
 	}
@@ -542,7 +587,7 @@ func searchBooks(w http.ResponseWriter, req *http.Request){
 	books := []Book{}
 	for rows.Next() {
 		var book Book
-		err := rows.Scan(&book.ID, &book.Nome, &book.Categoria, &book.NumeroCopias, &book.Autor)
+		err := rows.Scan(&book.ID, &book.Nome, &book.Categoria, &book.NumeroCopias, &book.Autor, &book.Available)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
