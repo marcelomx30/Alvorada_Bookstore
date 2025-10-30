@@ -353,15 +353,26 @@ func createPaginatedResponse(books []Book, pageNum int, totalBooks int, limit in
  }
 
 
-func getBook(w http.ResponseWriter, req *http.Request){
+func getBook(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(req)
 	id := vars["id"]
-	query := "SELECT id, nome, categoria, numero_copias, autor FROM books WHERE id = $1"
+	
+	query := `
+		SELECT 
+			b.id, b.nome, b.categoria, b.numero_copias, b.autor,
+			b.numero_copias - COALESCE((
+				SELECT COUNT(*) FROM rentals r 
+				WHERE r.book_id = b.id AND r.status = 'active'
+			), 0) as available_copies
+		FROM books b
+		WHERE b.id = $1
+	`
+	
 	var book Book
-	err := db.QueryRow(query, id).Scan(&book.ID, &book.Nome, &book.Categoria, &book.NumeroCopias, &book.Autor)
+	err := db.QueryRow(query, id).Scan(&book.ID, &book.Nome, &book.Categoria, &book.NumeroCopias, &book.Autor, &book.Available)
 
-	if err == sql.ErrNoRows{
+	if err == sql.ErrNoRows {
 		http.Error(w, "Book NOT FOUND", http.StatusNotFound)
 		return
 	}
@@ -391,7 +402,18 @@ func searchByCategory(w http.ResponseWriter, req *http.Request){
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	query := "SELECT id, nome, categoria, numero_copias, autor FROM books WHERE categoria = $1 ORDER BY nome LIMIT $2 OFFSET $3"
+	query := `
+		SELECT 
+			b.id, b.nome, b.categoria, b.numero_copias, b.autor,
+			b.numero_copias - COALESCE((
+				SELECT COUNT(*) FROM rentals r 
+				WHERE r.book_id = b.id AND r.status = 'active'
+			), 0) as available_copies
+		FROM books b 
+		WHERE categoria = $1 
+		ORDER BY nome 
+		LIMIT $2 OFFSET $3
+	`
 	rows, err := db.Query(query, category, limit, offset)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -402,7 +424,7 @@ func searchByCategory(w http.ResponseWriter, req *http.Request){
 	books := []Book{}
 	for rows.Next(){
 		var book Book
-		err := rows.Scan(&book.ID, &book.Nome, &book.Categoria, &book.NumeroCopias, &book.Autor)
+		err := rows.Scan(&book.ID, &book.Nome, &book.Categoria, &book.NumeroCopias, &book.Autor, &book.Available)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -431,18 +453,22 @@ func getBooks(w http.ResponseWriter, req *http.Request) {
 	}
 	
 	// Get paginated books
-	query := `
+query := `
 	SELECT 
-		b.id, b.nome, b.categoria, b.autor, b.numero_copias,
+		b.id, 
+		b.nome, 
+		b.categoria, 
+		b.autor,
+		b.numero_copias,
 		b.numero_copias - COALESCE((
-			SELECT COUNT(*) FROM rentals r 
+			SELECT COUNT(*) 
+			FROM rentals r 
 			WHERE r.book_id = b.id AND r.status = 'active'
 		), 0) as available_copies
 	FROM books b 
-	WHERE categoria = $1 
-	ORDER BY nome 
-	LIMIT $2 OFFSET $3
-	`	
+	ORDER BY b.nome 
+	LIMIT $1 OFFSET $2
+`
 	rows, err := db.Query(query, limit, offset)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -453,7 +479,7 @@ func getBooks(w http.ResponseWriter, req *http.Request) {
 	books := []Book{}
 	for rows.Next() {
 		var book Book
-		err := rows.Scan(&book.ID, &book.Nome, &book.Categoria, &book.NumeroCopias, &book.Autor, &book.Available)
+		err := rows.Scan(&book.ID, &book.Nome, &book.Categoria, &book.Autor, &book.NumeroCopias, &book.Available)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
