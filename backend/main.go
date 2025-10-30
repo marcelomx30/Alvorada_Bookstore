@@ -732,7 +732,7 @@ func getMyRentals(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(rentals)
 }
 
-func ReturnBook(w http.ResponseWriter, req *http.Request){
+func returnBook(w http.ResponseWriter, req *http.Request){
 	w.Header().Set("Content-Type", "application/json")
 
 	session := getSession(req)
@@ -747,19 +747,19 @@ func ReturnBook(w http.ResponseWriter, req *http.Request){
 	rentalIDStr := vars["id"]
 	rentalID, err := strconv.Atoi(rentalIDStr)
 	if err != nil{
-		http.Error(w "Invalid Rental ID", http.StatusBadRequest)
+		http.Error(w, "Invalid Rental ID", http.StatusBadRequest)
 		return
 	}
 
 	var rental Rental
-	err := db.QueryRow(`
+	err = db.QueryRow(`
 	SELECT id, user_id, book_id, status
 	FROM rentals 
 	WHERE id = $1
 	`, rentalID).Scan(&rental.ID, &rental.UserID, &rental.BookID, &rental.Status)
 
 	if err != nil {
-		if err = sql.ErrNoRows{
+		if err == sql.ErrNoRows{
 			http.Error(w, "Rental Not Found", http.StatusNotFound)
 			return
 		}
@@ -767,7 +767,7 @@ func ReturnBook(w http.ResponseWriter, req *http.Request){
 	return
 	}	
 
-	if rental.UserID != UserID && session.Role != "admin"{
+	if rental.UserID != userID && session.Role != "admin"{
 		http.Error(w, "Unauthorized", http.StatusForbidden)
 		return
 	}
