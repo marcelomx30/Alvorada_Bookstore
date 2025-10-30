@@ -216,10 +216,15 @@ function MyRentals() {
                       </div>
                       {rental.status === 'active' && (
                         <div className="mt-4 md:mt-0 md:ml-6">
-                          <button className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold whitespace-nowrap">Devolver Livro</button>
+                          <button
+                            onClick={() => handleReturnBook(rental.id, rental.book_name)}
+                            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold whitespace-nowrap"
+                          >
+                            Devolver Livro
+                          </button>
                         </div>
                       )}
-                    </div>
+                  </div>
                   </div>
                 </div>
               )
