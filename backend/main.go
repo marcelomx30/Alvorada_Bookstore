@@ -593,7 +593,6 @@ func searchBooks(w http.ResponseWriter, req *http.Request){
 		args = []interface{}{searchPattern, limit, offset}
 	}
 	
-	// Get total count
 	var totalBooks int
 	err := db.QueryRow(countQuery, searchPattern).Scan(&totalBooks)
 	if err != nil {
@@ -863,6 +862,21 @@ func returnBook(w http.ResponseWriter, req *http.Request){
 		"message" : "Book returned successfully",
 		"rental_id" : rentalID,
 	})
+}
+
+func requireAdmin(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, *http.Request){
+		session := getSession(req)
+		if session == nil {
+			http.Error(w, "Not Authenticated", http.StatusUnauthorized)
+			return
+		}
+		if session.Role != 'admin'{
+			http.Error(w, "Forbidden: Admin Access required", http.StatusForbidden)
+			return
+		}
+		next(w, req)
+	}
 }
 
 
