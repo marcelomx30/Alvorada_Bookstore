@@ -949,6 +949,58 @@ func addBook(w http.ResponseWriter, req *http.Request){
 	})
 }
 
+func updateBook(w http.ResponseWriter, req *http.Request){
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(req)
+	bookID := vars["id"]
+
+	var bookReq UpdateBookRequest
+	err := json.NewDecoder(req.Body).Decode(&bookReq)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if bookReq.Nome == "" {
+		http.Error(w, "Nome is required", http.StatusBadRequest)
+		return
+	}
+	if bookReq.Autor == "" {
+		http.Error(w, "Autor is required", http.StatusBadRequest)
+		return
+	}
+	if bookReq.Categoria == "" {
+		http.Error(w, "Categoria is required", http.StatusBadRequest)
+		return
+	}
+	if bookReq.NumeroCopias < 1 {
+		http.Error(w, "Numero de copias must be at least 1", http.StatusBadRequest)
+		return
+	}
+
+	var exists bool
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM books WHERE id = $1)", bookID).Scan(&exists)
+	if err != nil || !exists {
+		http.Error(w, "Book NOT Found", http.StatusNotFound)
+		return
+	}
+
+		_, err = db.Exec(`
+		UPDATE books 
+		SET nome = $1, autor = $2, categoria = $3, numero_copias = $4 
+		WHERE id = $5
+	`, bookReq.Nome, bookReq.Autor, bookReq.Categoria, bookReq.NumeroCopias, bookID)
+	
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Book updated successfully",
+	})
+}
 
 
 
