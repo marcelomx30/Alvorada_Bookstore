@@ -103,9 +103,12 @@ function MyRentals() {
               <span className="text-xl font-bold text-gray-800">Biblioteca Alvorada</span>
             </div>
             <div className="hidden md:flex items-center space-x-6">
-              <a href="/" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">📚 Catálogo</a>
-              <a href="/my-rentals" className="text-alvorada-blue font-semibold border-b-2 border-alvorada-blue">📖 Meus Aluguéis</a>
-            </div>
+            <a href="/" className="text-alvorada-blue font-semibold border-b-2 border-alvorada-blue">📚 Catálogo</a>
+            <a href="/my-rentals" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">📖 Meus Aluguéis</a>
+              {user?.role === 'admin' && (
+              <a href="/admin/books" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">⚙️ Admin</a>
+              )}
+            </div>           
             <div className="flex items-center space-x-4">
               <div className="text-right hidden md:block">
                 <p className="text-sm text-gray-600">Olá, <span className="font-semibold">{user?.name}</span></p>
