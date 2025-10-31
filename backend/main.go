@@ -78,14 +78,14 @@ type CreateBookRequest struct {
 	Nome string `json:nome`
 	Autor string `json:autor`
 	Categoria string `json:categoria`
-	NumeroCopias string `json:numero_copias`
+	NumeroCopias int `json:numero_copias`
 }
 
 type UpdateBookRequest struct {
 	Nome string `json:nome`
 	Autor string `json:autor`
 	Categoria string `json:categoria`
-	NumeroCopias string `json:numero_copias`
+	NumeroCopias int `json:numero_copias`
 }
 
 type RegisterRequest struct {
@@ -879,13 +879,13 @@ func returnBook(w http.ResponseWriter, req *http.Request){
 }
 
 func requireAdmin(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, *http.Request){
+	return func(w http.ResponseWriter, req *http.Request){
 		session := getSession(req)
 		if session == nil {
 			http.Error(w, "Not Authenticated", http.StatusUnauthorized)
 			return
 		}
-		if session.Role != 'admin'{
+		if session.Role != "admin"{
 			http.Error(w, "Forbidden: Admin Access required", http.StatusForbidden)
 			return
 		}
@@ -897,7 +897,7 @@ func addBook(w http.ResponseWriter, req *http.Request){
 	w.Header().Set("Content-Type", "application/json")
 
 	var bookReq CreateBookRequest
-	err:= json.NewDecoder(req.Body).Docode(&bookReq)
+	err:= json.NewDecoder(req.Body).Decode(&bookReq)
 	if err != nil{
 		http.Error(w, "Invalid Request Body", http.StatusBadRequest)
 		return
@@ -943,10 +943,10 @@ func addBook(w http.ResponseWriter, req *http.Request){
 		Available:    bookReq.NumeroCopias,
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{
-		"message" : "Book added successfully",
-		"book" : createdBook,
-	})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+	"message": "Book added successfully",
+	"book":    createdBook,
+})
 }
 
 func updateBook(w http.ResponseWriter, req *http.Request){
@@ -1002,7 +1002,44 @@ func updateBook(w http.ResponseWriter, req *http.Request){
 	})
 }
 
-
+func deleteBook(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	vars := mux.Vars(req)
+	bookID := vars["id"]
+	
+	var activeRentals int
+	err := db.QueryRow(`
+		SELECT COUNT(*) FROM rentals 
+		WHERE book_id = $1 AND status = 'active'
+	`, bookID).Scan(&activeRentals)
+	
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	if activeRentals > 0 {
+		http.Error(w, "Cannot delete book with active rentals", http.StatusBadRequest)
+		return
+	}
+	
+	result, err := db.Exec("DELETE FROM books WHERE id = $1", bookID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		http.Error(w, "Book not found", http.StatusNotFound)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Book deleted successfully",
+	})
+}
 
 func main(){
 	connStr := "postgres://library:library@localhost:5432/alvorada_library?sslmode=disable"
@@ -1036,7 +1073,10 @@ func main(){
 	r.HandleFunc("/api/rentals", rentBook).Methods("POST")
 	r.HandleFunc("/api/rentals/my", getMyRentals).Methods("GET")
 	r.HandleFunc("/api/rentals/{id}/return", returnBook).Methods("PUT")
-
+//Admin Routes
+	r.HandleFunc("/api/admin/books", requireAdmin(addBook)).Methods("POST")
+	r.HandleFunc("/api/admin/books/{id}", requireAdmin(updateBook)).Methods("PUT")
+	r.HandleFunc("/api/admin/books/{id}", requireAdmin(deleteBook)).Methods("DELETE")
 
 c := cors.New(cors.Options{
 	AllowedOrigins:   []string{"http://localhost:5173"},
