@@ -75,17 +75,17 @@ type RentalWithBook struct {
 }
 
 type CreateBookRequest struct {
-	Nome string `json:nome`
-	Autor string `json:autor`
-	Categoria string `json:categoria`
-	NumeroCopias int `json:numero_copias`
+	Nome string `json:"nome"`
+	Autor string `json:"autor"`
+	Categoria string `json:"categoria"`
+	NumeroCopias int `json:"numero_copias"`
 }
 
 type UpdateBookRequest struct {
-	Nome string `json:nome`
-	Autor string `json:autor`
-	Categoria string `json:categoria`
-	NumeroCopias int `json:numero_copias`
+	Nome string `json:"nome"`
+	Autor string `json:"autor"`
+	Categoria string `json:"categoria"`
+	NumeroCopias int `json:"numero_copias"`
 }
 
 type RegisterRequest struct {
@@ -900,6 +900,15 @@ func addBook(w http.ResponseWriter, req *http.Request){
 	err:= json.NewDecoder(req.Body).Decode(&bookReq)
 	if err != nil{
 		http.Error(w, "Invalid Request Body", http.StatusBadRequest)
+		return
+	}
+
+	// Debug: Print what we received
+	fmt.Printf("Received book request: %+v\n", bookReq)
+	
+	// Validate required fields
+	if bookReq.Nome == "" {
+		http.Error(w, "Nome is required", http.StatusBadRequest)
 		return
 	}
 
