@@ -74,6 +74,20 @@ type RentalWithBook struct {
 	BookCategory string `json:"book_category"`
 }
 
+type CreateBookRequest struct {
+	Nome string `json:nome`
+	Autor string `json:autor`
+	Categoria string `json:categoria`
+	NumeroCopias string `json:numero_copias`
+}
+
+type UpdateBookRequest struct {
+	Nome string `json:nome`
+	Autor string `json:autor`
+	Categoria string `json:categoria`
+	NumeroCopias string `json:numero_copias`
+}
+
 type RegisterRequest struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
@@ -878,6 +892,64 @@ func requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 		next(w, req)
 	}
 }
+
+func addBook(w http.ResponseWriter, req *http.Request){
+	w.Header().Set("Content-Type", "application/json")
+
+	var bookReq CreateBookRequest
+	err:= json.NewDecoder(req.Body).Docode(&bookReq)
+	if err != nil{
+		http.Error(w, "Invalid Request Body", http.StatusBadRequest)
+		return
+	}
+
+	if bookReq.Nome == "" {
+		http.Error(w, "Nome is required", http.StatusBadRequest)
+		return
+	}
+
+	if bookReq.Autor == "" {
+		http.Error(w, "Autor is required", http.StatusBadRequest)
+		return
+	}
+
+	if bookReq.Categoria == "" {
+		http.Error(w, "Categoria is required", http.StatusBadRequest)
+		return
+	}
+
+	if bookReq.NumeroCopias < 1 {
+		http.Error(w, "Number of copies must be at least 1", http.StatusBadRequest)
+		return
+	}
+
+	var bookID int
+	err = db.QueryRow(`INSERT INTO books (nome, autor, categoria, numero_copias) 
+		VALUES ($1, $2, $3, $4) 
+		RETURNING id
+		`, bookReq.Nome, bookReq.Autor, bookReq.Categoria, bookReq.NumeroCopias).Scan(&bookID)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	createdBook := Book{
+		ID:           bookID,
+		Nome:         bookReq.Nome,
+		Autor:        bookReq.Autor,
+		Categoria:    bookReq.Categoria,
+		NumeroCopias: bookReq.NumeroCopias,
+		Available:    bookReq.NumeroCopias,
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{
+		"message" : "Book added successfully",
+		"book" : createdBook,
+	})
+}
+
+
 
 
 func main(){
