@@ -31,15 +31,12 @@ function MyRentals() {
     if (!window.confirm(`Deseja devolver "${bookName}"?`)) {
       return
     }
-   
     try {
       await axios.put(`http://localhost:8080/api/rentals/${rentalId}/return`, {}, {
         withCredentials: true
       })
-    
       alert('✅ Livro devolvido com sucesso!')
-      fetchMyRentals() // Refresh the list
-    
+      fetchMyRentals()
     } catch (error) {
       const errorMsg = error.response?.data || 'Erro ao devolver livro. Tente novamente.'
       alert(`❌ ${errorMsg}`)
@@ -103,12 +100,12 @@ function MyRentals() {
               <span className="text-xl font-bold text-gray-800">Biblioteca Alvorada</span>
             </div>
             <div className="hidden md:flex items-center space-x-6">
-            <a href="/" className="text-alvorada-blue font-semibold border-b-2 border-alvorada-blue">📚 Catálogo</a>
-            <a href="/my-rentals" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">📖 Meus Aluguéis</a>
+              <a href="/" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">📚 Catálogo</a>
+              <a href="/my-rentals" className="text-alvorada-blue font-semibold border-b-2 border-alvorada-blue">📖 Meus Aluguéis</a>
               {user?.role === 'admin' && (
-              <a href="/admin/books" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">⚙️ Admin</a>
+                <a href="/admin/books" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">⚙️ Admin</a>
               )}
-            </div>           
+            </div>
             <div className="flex items-center space-x-4">
               <div className="text-right hidden md:block">
                 <p className="text-sm text-gray-600">Olá, <span className="font-semibold">{user?.name}</span></p>
@@ -219,15 +216,10 @@ function MyRentals() {
                       </div>
                       {rental.status === 'active' && (
                         <div className="mt-4 md:mt-0 md:ml-6">
-                          <button
-                            onClick={() => handleReturnBook(rental.id, rental.book_name)}
-                            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold whitespace-nowrap"
-                          >
-                            Devolver Livro
-                          </button>
+                          <button onClick={() => handleReturnBook(rental.id, rental.book_name)} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold whitespace-nowrap">Devolver Livro</button>
                         </div>
                       )}
-                  </div>
+                    </div>
                   </div>
                 </div>
               )
