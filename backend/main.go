@@ -341,7 +341,7 @@ func getPaginationParams(req *http.Request)(pageNum int, limit int, offset int){
 	}
 
 	if limitStr != ""{
-		if l, err := strconv.Atoi(limitStr); err == nil && l>0 && l<= 100 {
+		if l, err := strconv.Atoi(limitStr); err == nil && l>0 && l<= 10000 {
 			limit = l
 		}
 	}
