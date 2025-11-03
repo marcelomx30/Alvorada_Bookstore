@@ -13,6 +13,10 @@ function ManageBooks() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingBook, setEditingBook] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalBooks, setTotalBooks] = useState(0)
+  const [booksPerPage] = useState(50)
   const [formData, setFormData] = useState({
     nome: '',
     autor: '',
@@ -25,8 +29,8 @@ function ManageBooks() {
       navigate('/')
       return
     }
-    fetchBooks()
-  }, [user, navigate])
+    fetchBooks(currentPage)
+  }, [user, navigate, currentPage])
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -41,12 +45,15 @@ function ManageBooks() {
     }
   }, [searchQuery, books])
 
-  const fetchBooks = async () => {
+  const fetchBooks = async (page = 1) => {
     setLoading(true)
     try {
-      const response = await axios.get('http://localhost:8080/api/books?limit=1000')
+      const response = await axios.get(`http://localhost:8080/api/books?page=${page}&limit=${booksPerPage}`)
       setBooks(response.data.books || [])
       setFilteredBooks(response.data.books || [])
+      setCurrentPage(response.data.currentPage || 1)
+      setTotalPages(response.data.totalPages || 1)
+      setTotalBooks(response.data.totalBooks || 0)
     } catch (error) {
       console.error('Error fetching books:', error)
       alert('Erro ao carregar livros')
@@ -64,7 +71,7 @@ function ManageBooks() {
       alert('✅ Livro adicionado com sucesso!')
       setShowAddModal(false)
       setFormData({ nome: '', autor: '', categoria: '', numero_copias: 1 })
-      fetchBooks()
+      fetchBooks(currentPage)
     } catch (error) {
       alert(`❌ ${error.response?.data || 'Erro ao adicionar livro'}`)
     }
@@ -80,7 +87,7 @@ function ManageBooks() {
       setShowEditModal(false)
       setEditingBook(null)
       setFormData({ nome: '', autor: '', categoria: '', numero_copias: 1 })
-      fetchBooks()
+      fetchBooks(currentPage)
     } catch (error) {
       alert(`❌ ${error.response?.data || 'Erro ao atualizar livro'}`)
     }
@@ -95,7 +102,7 @@ function ManageBooks() {
         withCredentials: true
       })
       alert('✅ Livro deletado com sucesso!')
-      fetchBooks()
+      fetchBooks(currentPage)
     } catch (error) {
       alert(`❌ ${error.response?.data || 'Erro ao deletar livro'}`)
     }
@@ -157,7 +164,11 @@ function ManageBooks() {
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-4 mb-4">
-          <p className="text-gray-600">Mostrando <span className="font-semibold">{filteredBooks.length}</span> de <span className="font-semibold">{books.length}</span> livros</p>
+          <p className="text-gray-600">
+            Mostrando <span className="font-semibold">{filteredBooks.length}</span> livros desta página • 
+            Total: <span className="font-semibold">{totalBooks}</span> livros
+            {searchQuery && ` • Filtrados por: "${searchQuery}"`}
+          </p>
         </div>
 
         {loading ? (
@@ -201,6 +212,59 @@ function ManageBooks() {
             </div>
           </div>
         )}
+
+        {!loading && totalPages > 1 && (
+          <div className="flex justify-center items-center space-x-2 mt-8">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              ← Anterior
+            </button>
+            
+            <div className="flex items-center space-x-2">
+              {[...Array(Math.min(5, totalPages))].map((_, idx) => {
+                let pageNum
+                if (totalPages <= 5) {
+                  pageNum = idx + 1
+                } else if (currentPage <= 3) {
+                  pageNum = idx + 1
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + idx
+                } else {
+                  pageNum = currentPage - 2 + idx
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      currentPage === pageNum
+                        ? 'bg-alvorada-blue text-white'
+                        : 'bg-white border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                )
+              })}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              Próxima →
+            </button>
+          </div>
+        )}
+
+        <div className="text-center mt-4 text-gray-600">
+          Página {currentPage} de {totalPages}
+        </div>
       </main>
 
       {showAddModal && (
