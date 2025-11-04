@@ -1161,7 +1161,115 @@ func getAllRental(w http.ResponseWriter, req *http.Request){
 
 }
 
-
+func rentBookForUser(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	var rentalReq struct {
+		UserID int    `json:"user_id"`
+		BookID int    `json:"book_id"`
+		Notes  string `json:"notes"`
+	}
+	
+	err := json.NewDecoder(req.Body).Decode(&rentalReq)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	
+	// Verify user exists
+	var userExists bool
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", rentalReq.UserID).Scan(&userExists)
+	if err != nil || !userExists {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	
+	// Check if book exists
+	var bookName string
+	var totalCopies int
+	err = db.QueryRow("SELECT nome, numero_copias FROM books WHERE id = $1", rentalReq.BookID).Scan(&bookName, &totalCopies)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Book not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	// Check available copies
+	var rentedCopies int
+	err = db.QueryRow(`
+		SELECT COUNT(*) FROM rentals 
+		WHERE book_id = $1 AND status = 'active'
+	`, rentalReq.BookID).Scan(&rentedCopies)
+	
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	if rentedCopies >= totalCopies {
+		http.Error(w, "No copies available for this book", http.StatusBadRequest)
+		return
+	}
+	
+	// Check user's active rentals
+	var activeRentals int
+	err = db.QueryRow(`
+		SELECT COUNT(*) FROM rentals 
+		WHERE user_id = $1 AND status = 'active'
+	`, rentalReq.UserID).Scan(&activeRentals)
+	
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	// Get max rentals from config
+	var maxRentals int
+	err = db.QueryRow("SELECT value FROM system_config WHERE key = 'max_rentals_per_user'").Scan(&maxRentals)
+	if err != nil {
+		maxRentals = 3
+	}
+	
+	if activeRentals >= maxRentals {
+		http.Error(w, fmt.Sprintf("User already has %d active rentals", maxRentals), http.StatusBadRequest)
+		return
+	}
+	
+	// Get rental period
+	var rentalPeriodDays int
+	err = db.QueryRow("SELECT value FROM system_config WHERE key = 'rental_period_days'").Scan(&rentalPeriodDays)
+	if err != nil {
+		rentalPeriodDays = 30
+	}
+	
+	dueDate := time.Now().AddDate(0, 0, rentalPeriodDays)
+	
+	// Create rental
+	var rentalID int
+	err = db.QueryRow(`
+		INSERT INTO rentals (user_id, book_id, due_date, notes, status) 
+		VALUES ($1, $2, $3, $4, 'active') 
+		RETURNING id
+	`, rentalReq.UserID, rentalReq.BookID, dueDate, rentalReq.Notes).Scan(&rentalID)
+	
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Book rented successfully",
+		"rental": map[string]interface{}{
+			"id":       rentalID,
+			"book_id":  rentalReq.BookID,
+			"user_id":  rentalReq.UserID,
+			"due_date": dueDate.Format("2006-01-02"),
+		},
+	})
+}
 
 func main(){
 	connStr := "postgres://library:library@localhost:5432/alvorada_library?sslmode=disable"
