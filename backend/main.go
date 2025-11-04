@@ -106,7 +106,24 @@ type Session struct {
 	Role   string
 }
 
-// Generate random session ID
+type RentalWithBook struct {
+	ID           int        `json:"id"`
+	UserID       int        `json:"user_id"`
+	BookID       int        `json:"book_id"`
+	RentedAt     time.Time  `json:"rented_at"`
+	DueDate      time.Time  `json:"due_date"`
+	ReturnedAt   *time.Time `json:"returned_at"`
+	Status       string     `json:"status"`
+	Notes        string     `json:"notes"`
+	BookName     string     `json:"book_name"`
+	BookAuthor   string     `json:"book_author"`
+	BookCategory string     `json:"book_category"`
+	UserName     string     `json:"user_name"`
+	UserEmail    string     `json:"user_email"`
+}
+
+
+
 func generateSessionID() string {
 	b := make([]byte, 32)
 	rand.Read(b)
