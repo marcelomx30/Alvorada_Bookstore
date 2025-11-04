@@ -1271,6 +1271,59 @@ func rentBookForUser(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
+
+func adminReturnBook(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	vars := mux.Vars(req)
+	rentalIDStr := vars["id"]
+	rentalID, err := strconv.Atoi(rentalIDStr)
+	if err != nil {
+		http.Error(w, "Invalid rental ID", http.StatusBadRequest)
+		return
+	}
+	
+	// Check if rental exists
+	var rental Rental
+	err = db.QueryRow(`
+		SELECT id, status
+		FROM rentals
+		WHERE id = $1
+	`, rentalID).Scan(&rental.ID, &rental.Status)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Rental not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	if rental.Status == "returned" {
+		http.Error(w, "Book already returned", http.StatusBadRequest)
+		return
+	}
+	
+	// Update rental status
+	_, err = db.Exec(`
+		UPDATE rentals 
+		SET status = 'returned', returned_at = CURRENT_TIMESTAMP
+		WHERE id = $1
+	`, rentalID)
+	
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":   "Book returned successfully",
+		"rental_id": rentalID,
+	})
+}
+
+
 func main(){
 	connStr := "postgres://library:library@localhost:5432/alvorada_library?sslmode=disable"
 
