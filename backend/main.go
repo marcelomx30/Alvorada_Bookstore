@@ -1050,6 +1050,102 @@ func deleteBook(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
+
+
+func getAllRental(w http.ResponseWriter, req *http.Request){
+	w.Header().Set("Content-Type", "application/json")
+	
+	status := req.URL.Query().Get("status")
+	userID := req.URL.Query().Get("user_id")
+	
+	query = `
+	SELECT
+		r.id,
+		r.user_id,
+		r.book_id,
+		r.rented_at,
+		r.due_date,
+		r.returned_at,
+		r.status,
+		r.notes,
+		b.nome as book_name,
+		b.autor as book_author,
+		b.categoria as book_category, 
+		u.name as user_name,
+		u.email as user_email,
+	FROM rentals r 
+	JOIN books b ON r.book_id	= b.id 
+	JOIN users u ON r.user_id = u.id 
+	WHERE 1=1
+	`
+	args := []interface{}{}
+	argCount := 1
+
+	if status != "" {
+	query += fmt.Sprintf(" AND r.status = %d", argCount)
+	args = append(args, status)
+	argCount++
+	}
+	
+	if userID != "" {
+		query += fmt.Sprintf(" AND r.user_id = %d", argCount)
+		args = append(args, userID)
+		argCount++
+	}
+
+	query += " ORDER BY r.rented_at DESC"
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	rentals := []RentalWithBook{}
+	for rows.Next() {
+		var rental RentalWithBook
+		var returnedAt sql.NullTime
+		var notes sql.NullString
+	}
+
+		err := rows.Scan(
+		&rental.ID,
+		&rental.UserID,
+		&rental.BookID,
+		&rental.RentedAt,
+		&rental.DueDate,
+		&returnedAt,
+		&rental.Status,
+		&notes,
+		&rental.BookName,
+		&rental.BookAuthor,
+		&rental.BookCategory,
+		&rental.UserName,
+		&rental.UserEmail,
+		)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if returnedAt.Valid{
+			rental.ReturnedAt = &returnedAt.Time
+		}
+		if notes.Valid{
+			rental.Notes = notes.String
+		}
+
+	rentals = append(rentals, rental)
+	}
+
+	json.NewEncoder(w).Encode(rentals)
+
+}
+
+
+
 func main(){
 	connStr := "postgres://library:library@localhost:5432/alvorada_library?sslmode=disable"
 
