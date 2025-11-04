@@ -63,15 +63,7 @@ type Rental struct {
     DueDate          string    `json:"due_date"`
     ReturnedAt       *time.Time `json:"returned_at"`
     Status           string    `json:"status"`
-    RentedByAdminID  *int      `json:"rented_by_admin_id"`
     Notes            string    `json:"notes"`
-}
-
-type RentalWithBook struct {
-	Rental
-	BookName     string `json:"book_name"`
-	BookAuthor   string `json:"book_author"`
-	BookCategory string `json:"book_category"`
 }
 
 type CreateBookRequest struct {
@@ -820,7 +812,7 @@ func getMyRentals(w http.ResponseWriter, req *http.Request) {
 		var rental RentalWithBook
 		err := rows.Scan(
 			&rental.ID, &rental.UserID, &rental.BookID, &rental.RentedAt, &rental.DueDate,
-			&rental.ReturnedAt, &rental.Status, &rental.RentedByAdminID, &rental.Notes,
+			&rental.ReturnedAt, &rental.Status, &rental.Notes,
 			&rental.BookName, &rental.BookAuthor, &rental.BookCategory,
 		)
 		if err != nil {
@@ -1069,13 +1061,13 @@ func deleteBook(w http.ResponseWriter, req *http.Request) {
 
 
 
-func getAllRental(w http.ResponseWriter, req *http.Request){
+func getAllRentals(w http.ResponseWriter, req *http.Request){
 	w.Header().Set("Content-Type", "application/json")
 	
 	status := req.URL.Query().Get("status")
 	userID := req.URL.Query().Get("user_id")
 	
-	query = `
+	query := `
 	SELECT
 		r.id,
 		r.user_id,
@@ -1124,8 +1116,7 @@ func getAllRental(w http.ResponseWriter, req *http.Request){
 		var rental RentalWithBook
 		var returnedAt sql.NullTime
 		var notes sql.NullString
-	}
-
+	
 		err := rows.Scan(
 		&rental.ID,
 		&rental.UserID,
@@ -1158,7 +1149,6 @@ func getAllRental(w http.ResponseWriter, req *http.Request){
 	}
 
 	json.NewEncoder(w).Encode(rentals)
-
 }
 
 func rentBookForUser(w http.ResponseWriter, req *http.Request) {
