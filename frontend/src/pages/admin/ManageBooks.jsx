@@ -135,7 +135,29 @@ function ManageBooks() {
             <div className="hidden md:flex items-center space-x-6">
               <a href="/" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">📚 Catálogo</a>
               <a href="/my-rentals" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">📖 Meus Aluguéis</a>
-              <a href="/admin/books" className="text-alvorada-blue font-semibold border-b-2 border-alvorada-blue">⚙️ Gerenciar Livros</a>
+             {user?.role === 'admin' && (
+              <div className="relative group">
+                <button className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium flex items-center gap-1">
+                  ⚙️ Admin
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className="py-2">
+                    <a href="/admin/books" className="block px-4 py-2 text-alvorada-blue font-semibold bg-blue-50">
+                      📚 Gerenciar Livros
+                    </a>
+                    <a href="/admin/rentals" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">
+                      📋 Gerenciar Aluguéis
+                    </a>
+                    <a href="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">
+                      👥 Gerenciar Usuários
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}           
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right hidden md:block">

@@ -219,7 +219,27 @@ function BookCatalog() {
               <a href="/" className="text-alvorada-blue font-semibold border-b-2 border-alvorada-blue">📚 Catálogo</a>
               <a href="/my-rentals" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">📖 Meus Aluguéis</a>
               {user?.role === 'admin' && (
-                <a href="/admin/books" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">⚙️ Admin</a>
+                <div className="relative group">
+                  <button className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium flex items-center gap-1">
+                    ⚙️ Admin
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="py-2">
+                      <a href="/admin/books" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">
+                        📚 Gerenciar Livros
+                      </a>
+                      <a href="/admin/rentals" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">
+                        📋 Gerenciar Aluguéis
+                      </a>
+                      <a href="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">
+                        👥 Gerenciar Usuários
+                      </a>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
             
