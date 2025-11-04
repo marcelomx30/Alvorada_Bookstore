@@ -791,7 +791,7 @@ func getMyRentals(w http.ResponseWriter, req *http.Request) {
 	query := `
 		SELECT 
 			r.id, r.user_id, r.book_id, r.rented_at, r.due_date, 
-			r.returned_at, r.status, r.rented_by_admin_id, r.notes,
+			r.returned_at, r.status, r.notes,
 			b.nome, b.autor, b.categoria
 		FROM rentals r
 		JOIN books b ON r.book_id = b.id
@@ -1081,7 +1081,7 @@ func getAllRentals(w http.ResponseWriter, req *http.Request){
 		b.autor as book_author,
 		b.categoria as book_category, 
 		u.name as user_name,
-		u.email as user_email,
+		u.email as user_email
 	FROM rentals r 
 	JOIN books b ON r.book_id	= b.id 
 	JOIN users u ON r.user_id = u.id 
@@ -1091,13 +1091,13 @@ func getAllRentals(w http.ResponseWriter, req *http.Request){
 	argCount := 1
 
 	if status != "" {
-	query += fmt.Sprintf(" AND r.status = %d", argCount)
-	args = append(args, status)
-	argCount++
+		query += fmt.Sprintf(" AND r.status = $%d", argCount)
+		args = append(args, status)
+		argCount++
 	}
-	
+
 	if userID != "" {
-		query += fmt.Sprintf(" AND r.user_id = %d", argCount)
+		query += fmt.Sprintf(" AND r.user_id = $%d", argCount)
 		args = append(args, userID)
 		argCount++
 	}
