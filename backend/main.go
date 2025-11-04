@@ -1360,6 +1360,11 @@ func main(){
 	r.HandleFunc("/api/admin/books", requireAdmin(addBook)).Methods("POST")
 	r.HandleFunc("/api/admin/books/{id}", requireAdmin(updateBook)).Methods("PUT")
 	r.HandleFunc("/api/admin/books/{id}", requireAdmin(deleteBook)).Methods("DELETE")
+// Admin rental management routes
+r.HandleFunc("/api/admin/rentals", requireAdmin(getAllRentals)).Methods("GET")
+r.HandleFunc("/api/admin/rentals", requireAdmin(rentBookForUser)).Methods("POST")
+r.HandleFunc("/api/admin/rentals/{id}/return", requireAdmin(adminReturnBook)).Methods("PUT")
+
 
 c := cors.New(cors.Options{
 	AllowedOrigins:   []string{"http://localhost:5173"},
