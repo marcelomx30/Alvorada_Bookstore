@@ -1404,6 +1404,62 @@ func toggleUserStatus(w http.ResponseWriter, req *http.Request){
 	})
 }
 
+func getUserRentalHistory(w http.ResponseWriter, req *http.Request){
+	w.Header().Set("Content-Type", "application/json")
+	
+	vars := mux.Vars(req)
+	userIDStr := vars["id"]
+
+	query := `
+		SELECT 
+			r.id, r.user_id, r.book_id, r.rented_at, r.due_date,
+			r.returned_at, r.status, r.notes,
+			b.nome as book_name, b.autor as book_author, b.categoria as book_category
+		FROM rentals r
+		JOIN books b ON r.book_id = b.id
+		WHERE r.user_id = $1
+		ORDER BY r.rented_at DESC
+	`
+
+	rows, err := db.Query(query, userIDStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	defer rows.Close()
+
+	rentals := []RentalWithBook{}
+	for rows.Next() {
+		var rental RentalWithBook
+		var retunedAt sql.NullTime
+		var notes sql.NullString
+
+		err := rows.Scan(
+			&rental.ID, &rental.UserID, &rental.BookID, &rental.RentedAt, &rental.DueDate,
+			&returnedAt, &rental.Status, &notes,
+			&rental.BookName, &rental.BookAuthor, &rental.BookCategory,
+		)
+		
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if returnedAt.Valid{
+			rental.ReturnedAt = &returnedAt.Time
+		}
+		if notes.Valid {
+			rental.Notes = notes.String
+		}
+
+		rentals = append(rentals, rental)
+	}
+
+	json.NewEncoder().Encode(rentals)
+
+}
+
 func main(){
 	connStr := "postgres://library:library@localhost:5432/alvorada_library?sslmode=disable"
 
