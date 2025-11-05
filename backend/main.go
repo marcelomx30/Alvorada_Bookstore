@@ -1362,6 +1362,48 @@ func getAllUsers(w http.ResponseWriter, req *http.Request){
 	json.NewEncoder(w).Encode(users)
 }
 
+func toggleUserStatus(w http.ResponseWriter, req *http.Request){
+	w.Header().Set("Content-Type". "application/json")
+
+	vars := mux.Vars(req)
+	userIDStr := vars["id"]
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	session := getSession(req)
+	if session.UserID == userID {
+		http.Error(w, "You cannot deactivate your own account", http.StatusBadRequest)
+		return
+	}
+
+	var currentStatus bool
+	err = db.QueryRow("SELECT is_active FROM users WHERE id = $1", userID).Scan(&currentStatus)
+	if err != nil {
+		if err == sql.ErrNoRows{
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+	
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	newStatus := !currentStatus
+	_,err = db.Exec("UPDATE users SET is_active = $1 WHERE id = $2", newStatus, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "User status updated successfully"
+		"is_active": newStatus,
+	})
+}
+
 func main(){
 	connStr := "postgres://library:library@localhost:5432/alvorada_library?sslmode=disable"
 
