@@ -1500,7 +1500,10 @@ func main(){
 r.HandleFunc("/api/admin/rentals", requireAdmin(getAllRentals)).Methods("GET")
 r.HandleFunc("/api/admin/rentals", requireAdmin(rentBookForUser)).Methods("POST")
 r.HandleFunc("/api/admin/rentals/{id}/return", requireAdmin(adminReturnBook)).Methods("PUT")
-
+// Admin user management routes
+r.HandleFunc("/api/admin/users", requireAdmin(getAllUsers)).Methods("GET")
+r.HandleFunc("/api/admin/users/{id}/toggle", requireAdmin(toggleUserStatus)).Methods("PUT")
+r.HandleFunc("/api/admin/users/{id}/rentals", requireAdmin(getUserRentalHistory)).Methods("GET")
 
 c := cors.New(cors.Options{
 	AllowedOrigins:   []string{"http://localhost:5173"},
