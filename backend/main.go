@@ -1346,11 +1346,11 @@ func getAllUsers(w http.ResponseWriter, req *http.Request){
 		ActiveRentals int       `json:"active_rentals"`
 	}
 	
-	users := []UserWithStats{}
+	users := []UserWithStatus{}
 	for rows.Next() {
-		var user UserWithStats
+		var user UserWithStatus
 		err := rows.Scan(
-			&user.ID, &user.Name, &user.Phone, &user.Role, &user.IsActive, &user.CreatedAt, &user.TotalRentals, &user.ActiveRentals,
+			&user.ID, &user.Name, &user.Email, &user.Phone, &user.Role, &user.IsActive, &user.CreatedAt, &user.TotalRentals, &user.ActiveRentals,
 		)
 		if err != nil{
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1363,7 +1363,7 @@ func getAllUsers(w http.ResponseWriter, req *http.Request){
 }
 
 func toggleUserStatus(w http.ResponseWriter, req *http.Request){
-	w.Header().Set("Content-Type". "application/json")
+	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(req)
 	userIDStr := vars["id"]
@@ -1399,7 +1399,7 @@ func toggleUserStatus(w http.ResponseWriter, req *http.Request){
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message": "User status updated successfully"
+		"message": "User status updated successfully",
 		"is_active": newStatus,
 	})
 }
@@ -1432,7 +1432,7 @@ func getUserRentalHistory(w http.ResponseWriter, req *http.Request){
 	rentals := []RentalWithBook{}
 	for rows.Next() {
 		var rental RentalWithBook
-		var retunedAt sql.NullTime
+		var returnedAt sql.NullTime
 		var notes sql.NullString
 
 		err := rows.Scan(
@@ -1456,7 +1456,7 @@ func getUserRentalHistory(w http.ResponseWriter, req *http.Request){
 		rentals = append(rentals, rental)
 	}
 
-	json.NewEncoder().Encode(rentals)
+	json.NewEncoder(w).Encode(rentals)
 
 }
 
