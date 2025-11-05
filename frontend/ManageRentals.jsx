@@ -15,12 +15,6 @@ function ManageRentals() {
   const [users, setUsers] = useState([])
   const [books, setBooks] = useState([])
   const [loadingModal, setLoadingModal] = useState(false)
-  const [userSearchQuery, setUserSearchQuery] = useState('')
-  const [bookSearchQuery, setBookSearchQuery] = useState('')
-  const [showUserDropdown, setShowUserDropdown] = useState(false)
-  const [showBookDropdown, setShowBookDropdown] = useState(false)
-  const [selectedUser, setSelectedUser] = useState(null)
-  const [selectedBook, setSelectedBook] = useState(null)
   const [rentFormData, setRentFormData] = useState({
     user_id: '',
     book_id: '',
@@ -38,17 +32,6 @@ function ManageRentals() {
   useEffect(() => {
     applyFilters()
   }, [filter, searchQuery, rentals])
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (!e.target.closest('.dropdown-container')) {
-        setShowUserDropdown(false)
-        setShowBookDropdown(false)
-      }
-    }
-    document.addEventListener('click', handleClickOutside)
-    return () => document.removeEventListener('click', handleClickOutside)
-  }, [])
 
   const fetchRentals = async () => {
     setLoading(true)
@@ -68,9 +51,11 @@ function ManageRentals() {
   const fetchUsersAndBooks = async () => {
     setLoadingModal(true)
     try {
+      // Fetch books
       const booksResponse = await axios.get('http://localhost:8080/api/books?limit=1000')
       setBooks(booksResponse.data.books || [])
       
+      // For users, we'll extract from rentals for now (since we don't have a users endpoint yet)
       const uniqueUsers = []
       const userMap = new Map()
       rentals.forEach(rental => {
@@ -98,17 +83,12 @@ function ManageRentals() {
 
   const openRentModal = () => {
     setShowRentModal(true)
-    setSelectedUser(null)
-    setSelectedBook(null)
-    setUserSearchQuery('')
-    setBookSearchQuery('')
-    setShowUserDropdown(false)
-    setShowBookDropdown(false)
     fetchUsersAndBooks()
   }
 
   const applyFilters = () => {
     let filtered = [...rentals]
+
     if (filter !== 'all') {
       if (filter === 'overdue') {
         filtered = filtered.filter(r => isOverdue(r.due_date, r.status))
@@ -116,6 +96,7 @@ function ManageRentals() {
         filtered = filtered.filter(r => r.status === filter)
       }
     }
+
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(r =>
@@ -124,15 +105,18 @@ function ManageRentals() {
         r.user_email.toLowerCase().includes(query)
       )
     }
+
     setFilteredRentals(filtered)
   }
 
   const handleRentForUser = async (e) => {
     e.preventDefault()
+    
     if (!rentFormData.user_id || !rentFormData.book_id) {
       alert('Por favor, selecione um usuário e um livro')
       return
     }
+    
     try {
       await axios.post('http://localhost:8080/api/admin/rentals', {
         user_id: parseInt(rentFormData.user_id),
@@ -143,10 +127,6 @@ function ManageRentals() {
       })
       alert('✅ Livro alugado com sucesso!')
       setShowRentModal(false)
-      setSelectedUser(null)
-      setSelectedBook(null)
-      setUserSearchQuery('')
-      setBookSearchQuery('')
       setRentFormData({ user_id: '', book_id: '', notes: '' })
       fetchRentals()
     } catch (error) {
@@ -222,9 +202,15 @@ function ManageRentals() {
                 </button>
                 <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                   <div className="py-2">
-                    <a href="/admin/books" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">📚 Gerenciar Livros</a>
-                    <a href="/admin/rentals" className="block px-4 py-2 text-alvorada-blue font-semibold bg-blue-50">📋 Gerenciar Aluguéis</a>
-                    <a href="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">👥 Gerenciar Usuários</a>
+                    <a href="/admin/books" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">
+                      📚 Gerenciar Livros
+                    </a>
+                    <a href="/admin/rentals" className="block px-4 py-2 text-alvorada-blue font-semibold bg-blue-50">
+                      📋 Gerenciar Aluguéis
+                    </a>
+                    <a href="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">
+                      👥 Gerenciar Usuários
+                    </a>
                   </div>
                 </div>
               </div>
@@ -288,30 +274,52 @@ function ManageRentals() {
         </div>
 
         <div className="mb-6 flex flex-col md:flex-row gap-4">
-          <button onClick={openRentModal} className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold shadow-md">
+          <button 
+            onClick={openRentModal}
+            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold shadow-md"
+          >
             ➕ Alugar Livro para Usuário
           </button>
           <div className="flex-1">
-            <input type="text" placeholder="Buscar por livro, usuário ou email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
+            <input
+              type="text"
+              placeholder="Buscar por livro, usuário ou email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent"
+            />
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-6 mb-8">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Filtrar por:</h3>
           <div className="flex flex-wrap gap-3">
-            <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-lg font-medium transition-all ${filter === 'all' ? 'bg-alvorada-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Todos ({rentals.length})</button>
-            <button onClick={() => setFilter('active')} className={`px-4 py-2 rounded-lg font-medium transition-all ${filter === 'active' ? 'bg-alvorada-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Ativos ({activeCount})</button>
-            <button onClick={() => setFilter('overdue')} className={`px-4 py-2 rounded-lg font-medium transition-all ${filter === 'overdue' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Atrasados ({overdueCount})</button>
-            <button onClick={() => setFilter('returned')} className={`px-4 py-2 rounded-lg font-medium transition-all ${filter === 'returned' ? 'bg-alvorada-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Devolvidos ({returnedCount})</button>
+            <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-lg font-medium transition-all ${filter === 'all' ? 'bg-alvorada-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+              Todos ({rentals.length})
+            </button>
+            <button onClick={() => setFilter('active')} className={`px-4 py-2 rounded-lg font-medium transition-all ${filter === 'active' ? 'bg-alvorada-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+              Ativos ({activeCount})
+            </button>
+            <button onClick={() => setFilter('overdue')} className={`px-4 py-2 rounded-lg font-medium transition-all ${filter === 'overdue' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+              Atrasados ({overdueCount})
+            </button>
+            <button onClick={() => setFilter('returned')} className={`px-4 py-2 rounded-lg font-medium transition-all ${filter === 'returned' ? 'bg-alvorada-blue text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+              Devolvidos ({returnedCount})
+            </button>
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-4 mb-4">
-          <p className="text-gray-600">Mostrando <span className="font-semibold">{filteredRentals.length}</span> de <span className="font-semibold">{rentals.length}</span> aluguéis{searchQuery && ` • Filtrados por: "${searchQuery}"`}</p>
+          <p className="text-gray-600">
+            Mostrando <span className="font-semibold">{filteredRentals.length}</span> de <span className="font-semibold">{rentals.length}</span> aluguéis
+            {searchQuery && ` • Filtrados por: "${searchQuery}"`}
+          </p>
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center py-20"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-alvorada-blue"></div></div>
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-alvorada-blue"></div>
+          </div>
         ) : filteredRentals.length === 0 ? (
           <div className="bg-white rounded-xl shadow-md p-12 text-center">
             <div className="text-6xl mb-4">📚</div>
@@ -332,12 +340,16 @@ function ManageRentals() {
                             <h3 className="text-xl font-bold text-gray-900 mb-1">{rental.book_name}</h3>
                             <p className="text-gray-600"><span className="font-semibold">Autor:</span> {rental.book_author}</p>
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(rental.status, rental.due_date)}`}>{getStatusText(rental.status, rental.due_date)}</span>
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(rental.status, rental.due_date)}`}>
+                            {getStatusText(rental.status, rental.due_date)}
+                          </span>
                         </div>
+                        
                         <div className="bg-blue-50 rounded-lg p-3 mb-3">
                           <p className="text-sm font-semibold text-gray-900">👤 {rental.user_name}</p>
                           <p className="text-sm text-gray-600">📧 {rental.user_email}</p>
                         </div>
+
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
                             <p className="text-gray-500">Alugado em</p>
@@ -358,15 +370,22 @@ function ManageRentals() {
                             <p className="font-semibold text-gray-900">{rental.book_category}</p>
                           </div>
                         </div>
+
                         {rental.notes && (
                           <div className="mt-3 p-3 bg-gray-50 rounded-lg">
                             <p className="text-sm text-gray-600"><span className="font-semibold">Observações:</span> {rental.notes}</p>
                           </div>
                         )}
                       </div>
+
                       {rental.status === 'active' && (
                         <div className="lg:ml-6">
-                          <button onClick={() => handleReturnBook(rental.id, rental.book_name, rental.user_name)} className="w-full lg:w-auto px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold whitespace-nowrap">✅ Marcar como Devolvido</button>
+                          <button
+                            onClick={() => handleReturnBook(rental.id, rental.book_name, rental.user_name)}
+                            className="w-full lg:w-auto px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold whitespace-nowrap"
+                          >
+                            ✅ Marcar como Devolvido
+                          </button>
                         </div>
                       )}
                     </div>
@@ -378,62 +397,80 @@ function ManageRentals() {
         )}
       </main>
 
+      {/* Rent Book Modal */}
       {showRentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl">
             <h2 className="text-2xl font-bold mb-6 text-gray-800">➕ Alugar Livro para Usuário</h2>
+            
             {loadingModal ? (
-              <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-alvorada-blue"></div></div>
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-alvorada-blue"></div>
+              </div>
             ) : (
               <form onSubmit={handleRentForUser} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Usuário *</label>
-                  <div className="relative dropdown-container">
-                    <input type="text" required value={selectedUser ? `${selectedUser.name} (${selectedUser.email})` : userSearchQuery} onChange={(e) => {setUserSearchQuery(e.target.value); setSelectedUser(null); setShowUserDropdown(true)}} onFocus={() => setShowUserDropdown(true)} placeholder="Digite o nome ou email do usuário..." className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
-                    {showUserDropdown && !selectedUser && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {users.filter(u => u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) || u.email.toLowerCase().includes(userSearchQuery.toLowerCase())).map(u => (
-                          <div key={u.id} onClick={() => {setSelectedUser(u); setRentFormData({...rentFormData, user_id: u.id}); setShowUserDropdown(false); setUserSearchQuery('')}} className="px-4 py-2 hover:bg-alvorada-blue hover:text-white cursor-pointer transition-colors">
-                            <p className="font-semibold">{u.name}</p>
-                            <p className="text-xs opacity-75">{u.email}</p>
-                          </div>
-                        ))}
-                        {users.filter(u => u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) || u.email.toLowerCase().includes(userSearchQuery.toLowerCase())).length === 0 && (<div className="px-4 py-3 text-gray-500 text-center">Nenhum usuário encontrado</div>)}
-                      </div>
-                    )}
-                    {selectedUser && (<button type="button" onClick={() => {setSelectedUser(null); setRentFormData({...rentFormData, user_id: ''}); setUserSearchQuery('')}} className="absolute right-2 top-2 text-gray-400 hover:text-gray-600">✕</button>)}
-                  </div>
-                  {users.length === 0 && (<p className="text-xs text-gray-500 mt-1">Nenhum usuário encontrado. Eles aparecerão após fazerem um aluguel.</p>)}
+                  <select
+                    required
+                    value={rentFormData.user_id}
+                    onChange={(e) => setRentFormData({...rentFormData, user_id: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent"
+                  >
+                    <option value="">Selecione um usuário</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.email})
+                      </option>
+                    ))}
+                  </select>
+                  {users.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-1">Nenhum usuário encontrado. Eles aparecerão após fazerem um aluguel.</p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Livro *</label>
-                  <div className="relative dropdown-container">
-                    <input type="text" required value={selectedBook ? `${selectedBook.nome} - ${selectedBook.autor}` : bookSearchQuery} onChange={(e) => {setBookSearchQuery(e.target.value); setSelectedBook(null); setShowBookDropdown(true)}} onFocus={() => setShowBookDropdown(true)} placeholder="Digite o título ou autor do livro..." className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
-                    {showBookDropdown && !selectedBook && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {books.filter(b => b.available_copies > 0).filter(b => b.nome.toLowerCase().includes(bookSearchQuery.toLowerCase()) || b.autor.toLowerCase().includes(bookSearchQuery.toLowerCase())).map(book => (
-                          <div key={book.id} onClick={() => {setSelectedBook(book); setRentFormData({...rentFormData, book_id: book.id}); setShowBookDropdown(false); setBookSearchQuery('')}} className="px-4 py-2 hover:bg-alvorada-blue hover:text-white cursor-pointer transition-colors border-b border-gray-100 last:border-0">
-                            <p className="font-semibold">{book.nome}</p>
-                            <p className="text-xs opacity-75">{book.autor}</p>
-                            <p className="text-xs opacity-75 mt-1"><span className="inline-block bg-green-100 text-green-800 px-2 py-0.5 rounded">{book.available_copies} disponíveis</span></p>
-                          </div>
-                        ))}
-                        {books.filter(b => b.available_copies > 0).filter(b => b.nome.toLowerCase().includes(bookSearchQuery.toLowerCase()) || b.autor.toLowerCase().includes(bookSearchQuery.toLowerCase())).length === 0 && (<div className="px-4 py-3 text-gray-500 text-center">Nenhum livro disponível encontrado</div>)}
-                      </div>
-                    )}
-                    {selectedBook && (<button type="button" onClick={() => {setSelectedBook(null); setRentFormData({...rentFormData, book_id: ''}); setBookSearchQuery('')}} className="absolute right-2 top-2 text-gray-400 hover:text-gray-600">✕</button>)}
-                  </div>
+                  <select
+                    required
+                    value={rentFormData.book_id}
+                    onChange={(e) => setRentFormData({...rentFormData, book_id: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent"
+                  >
+                    <option value="">Selecione um livro</option>
+                    {books.filter(b => b.available_copies > 0).map(book => (
+                      <option key={book.id} value={book.id}>
+                        {book.nome} - {book.autor} ({book.available_copies} disponíveis)
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
-                  <textarea value={rentFormData.notes} onChange={(e) => setRentFormData({...rentFormData, notes: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" rows="3" placeholder="Observações adicionais (opcional)" />
+                  <textarea
+                    value={rentFormData.notes}
+                    onChange={(e) => setRentFormData({...rentFormData, notes: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent"
+                    rows="3"
+                    placeholder="Observações adicionais (opcional)"
+                  />
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <button type="submit" className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold">Alugar</button>
-                  <button type="button" onClick={() => {setShowRentModal(false); setSelectedUser(null); setSelectedBook(null); setUserSearchQuery(''); setBookSearchQuery(''); setRentFormData({ user_id: '', book_id: '', notes: '' })}} className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors font-semibold">Cancelar</button>
+                  <button type="submit" className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold">
+                    Alugar
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setShowRentModal(false)
+                      setRentFormData({ user_id: '', book_id: '', notes: '' })
+                    }} 
+                    className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors font-semibold"
+                  >
+                    Cancelar
+                  </button>
                 </div>
               </form>
             )}
