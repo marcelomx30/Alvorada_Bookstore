@@ -1313,6 +1313,54 @@ func adminReturnBook(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
+func getAllUsers(w http.ResponseWriter, req *http.Request){
+	w.Header().Set("Content-Type", "application/json")
+
+		query := `
+		SELECT 
+			u.id, u.name, u.email, u.phone, u.role, u.is_active, u.created_at,
+			COUNT(r.id) as total_rentals,
+			COUNT(CASE WHEN r.status = 'active' THEN 1 END) as active_rentals
+		FROM users u
+		LEFT JOIN rentals r ON u.id = r.user_id
+		GROUP BY u.id, u.name, u.email, u.phone, u.role, u.is_active, u.created_at
+		ORDER BY u.created_at DESC
+	`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	type UserWithStatus struct {
+		ID            int       `json:"id"`
+		Name          string    `json:"name"`
+		Email         string    `json:"email"`
+		Phone         string    `json:"phone"`
+		Role          string    `json:"role"`
+		IsActive      bool      `json:"is_active"`
+		CreatedAt     time.Time `json:"created_at"`
+		TotalRentals  int       `json:"total_rentals"`
+		ActiveRentals int       `json:"active_rentals"`
+	}
+	
+	users := []UserWithStats{}
+	for rows.Next() {
+		var user UserWithStats
+		err := rows.Scan(
+			&user.ID, &user.Name, &user.Phone, &user.Role, &user.IsActive, &user.CreatedAt, &user.TotalRentals, &user.ActiveRentals,
+		)
+		if err != nil{
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}	
+		
+		users = append(users, user)
+	}
+	json.NewEncoder(w).Encode(users)
+}
 
 func main(){
 	connStr := "postgres://library:library@localhost:5432/alvorada_library?sslmode=disable"
