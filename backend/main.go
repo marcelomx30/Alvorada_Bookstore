@@ -912,10 +912,6 @@ func addBook(w http.ResponseWriter, req *http.Request){
 		return
 	}
 
-	// Debug: Print what we received
-	fmt.Printf("Received book request: %+v\n", bookReq)
-	
-	// Validate required fields
 	if bookReq.Nome == "" {
 		http.Error(w, "Nome is required", http.StatusBadRequest)
 		return
