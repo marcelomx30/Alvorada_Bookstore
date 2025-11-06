@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from './contexts/AuthContext'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ToastProvider } from './contexts/ToastContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
@@ -9,28 +10,77 @@ import ManageBooks from './pages/admin/ManageBooks'
 import ManageRentals from './pages/admin/ManageRentals'
 import ManageUsers from './pages/admin/ManageUsers'
 
-function App() {
+function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
-
+  
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-alvorada-blue"></div>
       </div>
     )
   }
+  
+  if (!user) {
+    return <Navigate to="/login" />
+  }
+  
+  return children
+}
 
+function App() {
   return (
-    <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
-      <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
-      <Route path="/forgot-password" element={user ? <Navigate to="/" /> : <ForgotPassword />} />
-      <Route path="/" element={user ? <BookCatalog /> : <Navigate to="/login" />} />
-      <Route path="/my-rentals" element={user ? <MyRentals /> : <Navigate to="/login" />} />
-      <Route path="/admin/books" element={<ManageBooks />} />
-      <Route path="/admin/rentals" element={<ManageRentals />} />
-      <Route path="/admin/users" element={<ManageUsers />} />
-    </Routes>
+    <AuthProvider>
+      <ToastProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <BookCatalog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-rentals"
+              element={
+                <ProtectedRoute>
+                  <MyRentals />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/books"
+              element={
+                <ProtectedRoute>
+                  <ManageBooks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/rentals"
+              element={
+                <ProtectedRoute>
+                  <ManageRentals />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute>
+                  <ManageUsers />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Router>
+      </ToastProvider>
+    </AuthProvider>
   )
 }
 

@@ -1,19 +1,24 @@
 /** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+module.exports = {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        // Colors from your logo
-        'alvorada-blue': '#5B7FA6',
-        'alvorada-coral': '#C96850',
-        'alvorada-gold': '#D4A86A',
-        'alvorada-blue-dark': '#4A6685',
-        'alvorada-coral-dark': '#A85240',
+        'alvorada-blue': '#5B8DBE',
+        'alvorada-blue-dark': '#4A7BA7',
+        'alvorada-coral': '#E8927C',
+        'alvorada-coral-dark': '#D67A64',
+        'alvorada-gold': '#F4C95D',
       },
+      keyframes: {
+        'slide-in': {
+          '0%': { transform: 'translateX(100%)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' }
+        }
+      },
+      animation: {
+        'slide-in': 'slide-in 0.3s ease-out'
+      }
     },
   },
   plugins: [],
