@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
 import { useToast } from '../../contexts/ToastContext'
 import ConfirmModal from '../../components/ConfirmModal'
+import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 
 function ManageUsers() {
   const { user, logout } = useAuth()
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const [users, setUsers] = useState([])
   const [filteredUsers, setFilteredUsers] = useState([])
@@ -24,7 +25,6 @@ function ManageUsers() {
     message: '', 
     onConfirm: () => {} 
   })
-
 
   useEffect(() => {
     if (user?.role !== 'admin') {
@@ -47,7 +47,7 @@ function ManageUsers() {
       setUsers(response.data || [])
     } catch (error) {
       console.error('Error fetching users:', error)
-      alert('Erro ao carregar usuários')
+      showToast('Erro ao carregar usuários', 'error')
     } finally {
       setLoading(false)
     }
@@ -79,19 +79,24 @@ function ManageUsers() {
 
   const handleToggleStatus = async (userId, userName, currentStatus) => {
     const action = currentStatus ? 'desativar' : 'ativar'
-    if (!window.confirm(`Deseja ${action} o usuário "${userName}"?`)) {
-      return
-    }
-
-    try {
-      await axios.put(`http://localhost:8080/api/admin/users/${userId}/toggle`, {}, {
-        withCredentials: true
-      })
-      showToast(`✅ Usuário ${currentStatus ? 'desativado' : 'ativado'} com sucesso!`, 'success')
-      fetchUsers()
-    } catch (error) {
-      showToast(`❌ ${error.response?.data || 'Erro ao alterar status do usuário'}`, 'error')
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} Usuário`,
+      message: `Deseja ${action} o usuário "${userName}"?`,
+      onConfirm: async () => {
+        try {
+          await axios.put(`http://localhost:8080/api/admin/users/${userId}/toggle`, {}, {
+            withCredentials: true
+          })
+          showToast(`Usuário ${currentStatus ? 'desativado' : 'ativado'} com sucesso!`, 'success')
+          fetchUsers()
+        } catch (error) {
+          showToast(error.response?.data || 'Erro ao alterar status do usuário', 'error')
+        } finally {
+          setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+        }
+      }
+    })
   }
 
   const fetchUserHistory = async (userId, userName) => {
@@ -105,7 +110,7 @@ function ManageUsers() {
       setUserHistory(response.data || [])
     } catch (error) {
       console.error('Error fetching user history:', error)
-      alert('Erro ao carregar histórico do usuário')
+      showToast('Erro ao carregar histórico do usuário', 'error')
     } finally {
       setLoadingHistory(false)
     }
@@ -223,13 +228,7 @@ function ManageUsers() {
         </div>
 
         <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Buscar por nome, email ou telefone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent"
-          />
+          <input type="text" placeholder="Buscar por nome, email ou telefone..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-6 mb-8">
@@ -308,17 +307,11 @@ function ManageUsers() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                        <button
-                          onClick={() => fetchUserHistory(u.id, u.name)}
-                          className="px-3 py-1 bg-alvorada-blue text-white rounded hover:bg-alvorada-blue-dark transition-colors font-semibold"
-                        >
+                        <button onClick={() => fetchUserHistory(u.id, u.name)} className="px-3 py-1 bg-alvorada-blue text-white rounded hover:bg-alvorada-blue-dark transition-colors font-semibold">
                           📋 Histórico
                         </button>
                         {u.id !== user.id && (
-                          <button
-                            onClick={() => handleToggleStatus(u.id, u.name, u.is_active)}
-                            className={`px-3 py-1 text-white rounded transition-colors font-semibold ${u.is_active ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
-                          >
+                          <button onClick={() => handleToggleStatus(u.id, u.name, u.is_active)} className={`px-3 py-1 text-white rounded transition-colors font-semibold ${u.is_active ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>
                             {u.is_active ? '🚫 Desativar' : '✅ Ativar'}
                           </button>
                         )}
@@ -390,6 +383,16 @@ function ManageUsers() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => {} })}
+        confirmText="Confirmar"
+        type="warning"
+      />
 
       <footer className="bg-gray-800 text-white py-8 mt-20">
         <div className="container mx-auto px-6 text-center">

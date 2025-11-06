@@ -1,27 +1,34 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
+import ConfirmModal from '../../components/ConfirmModal'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
 function ManageBooks() {
   const { user, logout } = useAuth()
+  const { showToast } = useToast()
   const navigate = useNavigate()
   const [books, setBooks] = useState([])
-  const [filteredBooks, setFilteredBooks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [editingBook, setEditingBook] = useState(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalBooks, setTotalBooks] = useState(0)
-  const [booksPerPage] = useState(50)
-  const [formData, setFormData] = useState({
+  const [currentBook, setCurrentBook] = useState(null)
+  const [newBook, setNewBook] = useState({
     nome: '',
     autor: '',
     categoria: '',
-    numero_copias: 1
+    total_copies: 1
+  })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalBooks, setTotalBooks] = useState(0)
+  const [confirmModal, setConfirmModal] = useState({ 
+    isOpen: false, 
+    title: '', 
+    message: '', 
+    onConfirm: () => {} 
   })
 
   useEffect(() => {
@@ -29,31 +36,23 @@ function ManageBooks() {
       navigate('/')
       return
     }
-    fetchBooks(currentPage)
-  }, [user, navigate, currentPage])
+    fetchBooks()
+  }, [user, navigate, currentPage, searchQuery])
 
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredBooks(books)
-    } else {
-      const query = searchQuery.toLowerCase()
-      setFilteredBooks(books.filter(book => 
-        book.nome.toLowerCase().includes(query) ||
-        book.autor.toLowerCase().includes(query) ||
-        book.categoria.toLowerCase().includes(query)
-      ))
-    }
-  }, [searchQuery, books])
-
-  const fetchBooks = async (page = 1) => {
+  const fetchBooks = async () => {
     setLoading(true)
     try {
-      const response = await axios.get(`http://localhost:8080/api/books?page=${page}&limit=${booksPerPage}`)
+      const params = { page: currentPage, limit: 50 }
+      if (searchQuery.trim()) {
+        params.search = searchQuery
+      }
+      const response = await axios.get('http://localhost:8080/api/books', {
+        params,
+        withCredentials: true
+      })
       setBooks(response.data.books || [])
-      setFilteredBooks(response.data.books || [])
-      setCurrentPage(response.data.currentPage || 1)
-      setTotalPages(response.data.totalPages || 1)
-      setTotalBooks(response.data.totalBooks || 0)
+      setTotalPages(response.data.total_pages || 1)
+      setTotalBooks(response.data.total || 0)
     } catch (error) {
       console.error('Error fetching books:', error)
       showToast('Erro ao carregar livros', 'error')
@@ -65,13 +64,13 @@ function ManageBooks() {
   const handleAddBook = async (e) => {
     e.preventDefault()
     try {
-      await axios.post('http://localhost:8080/api/admin/books', formData, {
+      await axios.post('http://localhost:8080/api/books', newBook, {
         withCredentials: true
       })
       showToast('Livro adicionado com sucesso!', 'success')
       setShowAddModal(false)
-      setFormData({ nome: '', autor: '', categoria: '', numero_copias: 1 })
-      fetchBooks(currentPage)
+      setNewBook({ nome: '', autor: '', categoria: '', total_copies: 1 })
+      fetchBooks()
     } catch (error) {
       showToast(error.response?.data || 'Erro ao adicionar livro', 'error')
     }
@@ -80,42 +79,41 @@ function ManageBooks() {
   const handleEditBook = async (e) => {
     e.preventDefault()
     try {
-      await axios.put(`http://localhost:8080/api/admin/books/${editingBook.id}`, formData, {
+      await axios.put(`http://localhost:8080/api/books/${currentBook.id}`, currentBook, {
         withCredentials: true
       })
       showToast('Livro atualizado com sucesso!', 'success')
       setShowEditModal(false)
-      setEditingBook(null)
-      setFormData({ nome: '', autor: '', categoria: '', numero_copias: 1 })
-      fetchBooks(currentPage)
+      setCurrentBook(null)
+      fetchBooks()
     } catch (error) {
       showToast(error.response?.data || 'Erro ao atualizar livro', 'error')
     }
   }
 
   const handleDeleteBook = async (bookId, bookName) => {
-    if (!window.confirm(`Tem certeza que deseja deletar "${bookName}"?`)) {
-      return
-    }
-    try {
-      await axios.delete(`http://localhost:8080/api/admin/books/${bookId}`, {
-        withCredentials: true
-      })
-      showToast('Livro deletado com sucesso!', 'success')
-      fetchBooks(currentPage)
-    } catch (error) {
-      showToast(error.response?.data || 'Erro ao deletar livro', 'error')
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Deletar Livro',
+      message: `Tem certeza que deseja deletar "${bookName}"? Esta ação não pode ser desfeita.`,
+      onConfirm: async () => {
+        try {
+          await axios.delete(`http://localhost:8080/api/books/${bookId}`, {
+            withCredentials: true
+          })
+          showToast('Livro deletado com sucesso!', 'success')
+          fetchBooks()
+        } catch (error) {
+          showToast(error.response?.data || 'Erro ao deletar livro', 'error')
+        } finally {
+          setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+        }
+      }
+    })
   }
 
   const openEditModal = (book) => {
-    setEditingBook(book)
-    setFormData({
-      nome: book.nome,
-      autor: book.autor,
-      categoria: book.categoria,
-      numero_copias: book.numero_copias
-    })
+    setCurrentBook({ ...book })
     setShowEditModal(true)
   }
 
@@ -135,9 +133,8 @@ function ManageBooks() {
             <div className="hidden md:flex items-center space-x-6">
               <a href="/" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">📚 Catálogo</a>
               <a href="/my-rentals" className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium">📖 Meus Aluguéis</a>
-             {user?.role === 'admin' && (
               <div className="relative group">
-                <button className="text-gray-700 hover:text-alvorada-blue transition-colors font-medium flex items-center gap-1">
+                <button className="text-alvorada-blue font-semibold flex items-center gap-1">
                   ⚙️ Admin
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -145,19 +142,12 @@ function ManageBooks() {
                 </button>
                 <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                   <div className="py-2">
-                    <a href="/admin/books" className="block px-4 py-2 text-alvorada-blue font-semibold bg-blue-50">
-                      📚 Gerenciar Livros
-                    </a>
-                    <a href="/admin/rentals" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">
-                      📋 Gerenciar Aluguéis
-                    </a>
-                    <a href="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">
-                      👥 Gerenciar Usuários
-                    </a>
+                    <a href="/admin/books" className="block px-4 py-2 text-alvorada-blue font-semibold bg-blue-50">📚 Gerenciar Livros</a>
+                    <a href="/admin/rentals" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">📋 Gerenciar Aluguéis</a>
+                    <a href="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">👥 Gerenciar Usuários</a>
                   </div>
                 </div>
               </div>
-            )}           
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right hidden md:block">
@@ -178,176 +168,181 @@ function ManageBooks() {
       </header>
 
       <main className="container mx-auto px-6 py-8">
-        <div className="mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <button onClick={() => setShowAddModal(true)} className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold shadow-md">➕ Adicionar Novo Livro</button>
-          <div className="flex-1 md:max-w-md">
-            <input type="text" placeholder="Buscar por título, autor ou categoria..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
+        <div className="mb-6 flex flex-col md:flex-row gap-4">
+          <button onClick={() => setShowAddModal(true)} className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold shadow-md">
+            ➕ Adicionar Novo Livro
+          </button>
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="Buscar por título, autor ou categoria..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent"
+            />
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-4 mb-4">
           <p className="text-gray-600">
-            Mostrando <span className="font-semibold">{filteredBooks.length}</span> livros desta página • 
-            Total: <span className="font-semibold">{totalBooks}</span> livros
-            {searchQuery && ` • Filtrados por: "${searchQuery}"`}
+            Mostrando <span className="font-semibold">{books.length}</span> livros desta página • Total: <span className="font-semibold">{totalBooks}</span> livros
           </p>
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center py-20"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-alvorada-blue"></div></div>
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-alvorada-blue"></div>
+          </div>
+        ) : books.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-md p-12 text-center">
+            <div className="text-6xl mb-4">📚</div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Nenhum livro encontrado</h3>
+            <p className="text-gray-600">Adicione novos livros ao catálogo</p>
+          </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-alvorada-blue text-white">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Título</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Autor</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Categoria</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Cópias</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Disponíveis</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredBooks.length === 0 ? (
-                    <tr><td colSpan="7" className="px-6 py-12 text-center text-gray-500">{searchQuery ? `Nenhum livro encontrado para "${searchQuery}"` : 'Nenhum livro cadastrado'}</td></tr>
-                  ) : (
-                    filteredBooks.map((book) => (
+          <>
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-alvorada-blue text-white">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Título</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Autor</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Categoria</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Cópias</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Disponíveis</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {books.map((book) => (
                       <tr key={book.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">{book.id}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">{book.nome}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{book.nome}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{book.autor}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm"><span className="inline-block bg-alvorada-gold bg-opacity-30 text-alvorada-coral-dark px-3 py-1 rounded-full text-xs font-medium">{book.categoria}</span></td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">{book.numero_copias}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm"><span className={`font-semibold ${book.available_copies === 0 ? 'text-red-600' : 'text-green-600'}`}>{book.available_copies}</span></td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className="inline-block px-3 py-1 bg-alvorada-gold text-gray-800 rounded-full text-xs font-medium">
+                            {book.categoria}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">{book.total_copies}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${book.available_copies > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            {book.available_copies}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                          <button onClick={() => openEditModal(book)} className="px-3 py-1 bg-alvorada-blue text-white rounded hover:bg-alvorada-blue-dark transition-colors font-semibold">✏️ Editar</button>
-                          <button onClick={() => handleDeleteBook(book.id, book.nome)} className="px-3 py-1 bg-alvorada-coral text-white rounded hover:bg-alvorada-coral-dark transition-colors font-semibold">🗑️ Deletar</button>
+                          <button onClick={() => openEditModal(book)} className="px-3 py-1 bg-alvorada-blue text-white rounded hover:bg-alvorada-blue-dark transition-colors font-semibold">
+                            ✏️ Editar
+                          </button>
+                          <button onClick={() => handleDeleteBook(book.id, book.nome)} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors font-semibold">
+                            🗑️ Deletar
+                          </button>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {!loading && totalPages > 1 && (
-          <div className="flex justify-center items-center space-x-2 mt-8">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            >
-              ← Anterior
-            </button>
-            
-            <div className="flex items-center space-x-2">
-              {[...Array(Math.min(5, totalPages))].map((_, idx) => {
-                let pageNum
-                if (totalPages <= 5) {
-                  pageNum = idx + 1
-                } else if (currentPage <= 3) {
-                  pageNum = idx + 1
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + idx
-                } else {
-                  pageNum = currentPage - 2 + idx
-                }
-                
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                      currentPage === pageNum
-                        ? 'bg-alvorada-blue text-white'
-                        : 'bg-white border border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                )
-              })}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            >
-              Próxima →
-            </button>
-          </div>
+            <div className="flex justify-center items-center gap-4 mb-8">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-alvorada-blue text-white rounded-lg hover:bg-alvorada-blue-dark disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-semibold"
+              >
+                ← Anterior
+              </button>
+              <span className="text-gray-700 font-medium">
+                Página {currentPage} de {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-alvorada-blue text-white rounded-lg hover:bg-alvorada-blue-dark disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-semibold"
+              >
+                Próxima →
+              </button>
+            </div>
+          </>
         )}
-
-        <div className="text-center mt-4 text-gray-600">
-          Página {currentPage} de {totalPages}
-        </div>
       </main>
 
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl">
             <h2 className="text-2xl font-bold mb-6 text-gray-800">➕ Adicionar Novo Livro</h2>
             <form onSubmit={handleAddBook} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
-                <input type="text" required value={formData.nome} onChange={(e) => setFormData({...formData, nome: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" placeholder="Digite o título do livro" />
+                <input required type="text" value={newBook.nome} onChange={(e) => setNewBook({...newBook, nome: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Autor *</label>
-                <input type="text" required value={formData.autor} onChange={(e) => setFormData({...formData, autor: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" placeholder="Digite o nome do autor" />
+                <input required type="text" value={newBook.autor} onChange={(e) => setNewBook({...newBook, autor: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
-                <input type="text" required value={formData.categoria} onChange={(e) => setFormData({...formData, categoria: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" placeholder="Ex: Filosofia, História" />
+                <input required type="text" value={newBook.categoria} onChange={(e) => setNewBook({...newBook, categoria: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número de Cópias *</label>
-                <input type="number" required min="1" value={formData.numero_copias} onChange={(e) => setFormData({...formData, numero_copias: parseInt(e.target.value)})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
+                <input required type="number" min="1" value={newBook.total_copies} onChange={(e) => setNewBook({...newBook, total_copies: parseInt(e.target.value)})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold">Adicionar</button>
-                <button type="button" onClick={() => {setShowAddModal(false); setFormData({nome: '', autor: '', categoria: '', numero_copias: 1})}} className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors font-semibold">Cancelar</button>
+                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors font-semibold">Cancelar</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
+      {showEditModal && currentBook && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl">
             <h2 className="text-2xl font-bold mb-6 text-gray-800">✏️ Editar Livro</h2>
             <form onSubmit={handleEditBook} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
-                <input type="text" required value={formData.nome} onChange={(e) => setFormData({...formData, nome: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
+                <input required type="text" value={currentBook.nome} onChange={(e) => setCurrentBook({...currentBook, nome: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Autor *</label>
-                <input type="text" required value={formData.autor} onChange={(e) => setFormData({...formData, autor: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
+                <input required type="text" value={currentBook.autor} onChange={(e) => setCurrentBook({...currentBook, autor: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
-                <input type="text" required value={formData.categoria} onChange={(e) => setFormData({...formData, categoria: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
+                <input required type="text" value={currentBook.categoria} onChange={(e) => setCurrentBook({...currentBook, categoria: e.target.value})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Número de Cópias *</label>
-                <input type="number" required min="1" value={formData.numero_copias} onChange={(e) => setFormData({...formData, numero_copias: parseInt(e.target.value)})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total de Cópias *</label>
+                <input required type="number" min="1" value={currentBook.total_copies} onChange={(e) => setCurrentBook({...currentBook, total_copies: parseInt(e.target.value)})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 px-4 py-2 bg-alvorada-blue text-white rounded-lg hover:bg-alvorada-blue-dark transition-colors font-semibold">Salvar</button>
-                <button type="button" onClick={() => {setShowEditModal(false); setEditingBook(null); setFormData({nome: '', autor: '', categoria: '', numero_copias: 1})}} className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors font-semibold">Cancelar</button>
+                <button type="button" onClick={() => { setShowEditModal(false); setCurrentBook(null) }} className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors font-semibold">Cancelar</button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => {} })}
+        confirmText="Deletar"
+        cancelText="Cancelar"
+        type="danger"
+      />
 
       <footer className="bg-gray-800 text-white py-8 mt-20">
         <div className="container mx-auto px-6 text-center">

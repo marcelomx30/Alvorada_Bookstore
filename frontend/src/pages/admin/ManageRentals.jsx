@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { useToast } from '../../contexts/ToastContext'
+import ConfirmModal from '../../components/ConfirmModal'
 
 
 function ManageRentals() {
@@ -28,6 +29,13 @@ function ManageRentals() {
     user_id: '',
     book_id: '',
     notes: ''
+  })
+
+  const [confirmModal, setConfirmModal] = useState({ 
+    isOpen: false, 
+    title: '', 
+    message: '', 
+    onConfirm: () => {} 
   })
 
   useEffect(() => {
@@ -157,19 +165,25 @@ function ManageRentals() {
   }
 
   const handleReturnBook = async (rentalId, bookName, userName) => {
-    if (!window.confirm(`Marcar "${bookName}" (alugado por ${userName}) como devolvido?`)) {
-      return
-    }
-    try {
-      await axios.put(`http://localhost:8080/api/admin/rentals/${rentalId}/return`, {}, {
-        withCredentials: true
-      })
-      showToast('✅ Livro marcado como devolvido!', 'success')
-      fetchRentals()
-    } catch (error) {
-      showToast(error.response?.data || 'Erro ao devolver livro', 'error')
-    }
-  }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Marcar como Devolvido',
+      message: `Marcar "${bookName}" (alugado por ${userName}) como devolvido?`,
+      onConfirm: async () => {
+        try {
+          await axios.put(`http://localhost:8080/api/admin/rentals/${rentalId}/return`, {}, {
+            withCredentials: true
+          })
+          showToast('Livro marcado como devolvido!', 'success')
+          fetchRentals()
+        } catch (error) {
+          showToast(error.response?.data || 'Erro ao devolver livro', 'error')
+        } finally {
+          setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+        }
+      }
+    })
+}
 
   const isOverdue = (dueDate, status) => {
     if (status === 'returned') return false
@@ -442,7 +456,15 @@ function ManageRentals() {
           </div>
         </div>
       )}
-
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => {} })}
+        confirmText="Confirmar"
+        type="success"
+      />
       <footer className="bg-gray-800 text-white py-8 mt-20">
         <div className="container mx-auto px-6 text-center">
           <p>© 2025 Biblioteca Alvorada - Sistema de Gestão de Livros</p>
