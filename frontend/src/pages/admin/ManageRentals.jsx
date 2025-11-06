@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { useToast } from '../../contexts/ToastContext'
+
 
 function ManageRentals() {
+  const { showToast } = useToast()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [rentals, setRentals] = useState([])
@@ -59,8 +62,7 @@ function ManageRentals() {
       setRentals(response.data || [])
     } catch (error) {
       console.error('Error fetching rentals:', error)
-      alert('Erro ao carregar aluguéis')
-    } finally {
+      showToast('Erro ao carregar aluguéis', 'error')    } finally {
       setLoading(false)
     }
   }
@@ -90,7 +92,7 @@ function ManageRentals() {
       setUsers(uniqueUsers)
     } catch (error) {
       console.error('Error fetching data:', error)
-      alert('Erro ao carregar dados para aluguel')
+      showToast('Erro ao carregar dados para aluguel', 'error')
     } finally {
       setLoadingModal(false)
     }
@@ -130,7 +132,7 @@ function ManageRentals() {
   const handleRentForUser = async (e) => {
     e.preventDefault()
     if (!rentFormData.user_id || !rentFormData.book_id) {
-      alert('Por favor, selecione um usuário e um livro')
+      showToast('Por favor, selecione um usuário e um livro', 'error')
       return
     }
     try {
@@ -141,7 +143,7 @@ function ManageRentals() {
       }, {
         withCredentials: true
       })
-      alert('✅ Livro alugado com sucesso!')
+      showToast('✅ Livro alugado com sucesso!', 'sucess')
       setShowRentModal(false)
       setSelectedUser(null)
       setSelectedBook(null)
@@ -150,7 +152,7 @@ function ManageRentals() {
       setRentFormData({ user_id: '', book_id: '', notes: '' })
       fetchRentals()
     } catch (error) {
-      alert(`❌ ${error.response?.data || 'Erro ao alugar livro'}`)
+      showToast(`❌ ${error.response?.data || 'Erro ao alugar livro'}`, 'error')
     }
   }
 
@@ -162,10 +164,10 @@ function ManageRentals() {
       await axios.put(`http://localhost:8080/api/admin/rentals/${rentalId}/return`, {}, {
         withCredentials: true
       })
-      alert('✅ Livro marcado como devolvido!')
+      showToast('✅ Livro marcado como devolvido!', 'success')
       fetchRentals()
     } catch (error) {
-      alert(`❌ ${error.response?.data || 'Erro ao devolver livro'}`)
+      showToast(error.response?.data || 'Erro ao devolver livro', 'error')
     }
   }
 

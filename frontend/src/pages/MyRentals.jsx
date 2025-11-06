@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
+import { useToast } from '../contexts/ToastContext'
 
 function MyRentals() {
+  const { showToast } = useToast()
   const { user, logout } = useAuth()
   const [rentals, setRentals] = useState([])
   const [loading, setLoading] = useState(true)
@@ -21,7 +23,7 @@ function MyRentals() {
       setRentals(response.data || [])
     } catch (error) {
       console.error('Error fetching rentals:', error)
-      alert('Erro ao carregar aluguéis')
+      showToast('Erro ao carregar aluguéis', 'error')
     } finally {
       setLoading(false)
     }
@@ -35,12 +37,12 @@ function MyRentals() {
       await axios.put(`http://localhost:8080/api/rentals/${rentalId}/return`, {}, {
         withCredentials: true
       })
-      alert('✅ Livro devolvido com sucesso!')
       fetchMyRentals()
+      showToast('Livro devolvido com sucesso!', 'success')
     } catch (error) {
       const errorMsg = error.response?.data || 'Erro ao devolver livro. Tente novamente.'
-      alert(`❌ ${errorMsg}`)
-    }
+      showToast(errorMsg, 'error')
+}
   }
 
   const getStatusColor = (status) => {

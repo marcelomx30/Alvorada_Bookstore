@@ -23,10 +23,10 @@ function Toast({ message, type = 'success', onClose }) {
   }[type]
 
   return (
-    <div className="fixed top-4 right-4 z-[9999] animate-slide-in">
-      <div className={`${bgColor} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 min-w-[300px]`}>
+    <div className="animate-slide-in">
+      <div className={`${bgColor} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 min-w-[300px] max-w-md`}>
         <span className="text-2xl">{icon}</span>
-        <p className="flex-1">{message}</p>
+        <p className="flex-1 text-sm md:text-base">{message}</p>
         <button onClick={onClose} className="text-white hover:text-gray-200 text-xl">✕</button>
       </div>
     </div>

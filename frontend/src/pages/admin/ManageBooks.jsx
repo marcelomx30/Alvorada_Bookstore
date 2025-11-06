@@ -56,7 +56,7 @@ function ManageBooks() {
       setTotalBooks(response.data.totalBooks || 0)
     } catch (error) {
       console.error('Error fetching books:', error)
-      alert('Erro ao carregar livros')
+      showToast('Erro ao carregar livros', 'error')
     } finally {
       setLoading(false)
     }
@@ -68,12 +68,12 @@ function ManageBooks() {
       await axios.post('http://localhost:8080/api/admin/books', formData, {
         withCredentials: true
       })
-      alert('✅ Livro adicionado com sucesso!')
+      showToast('Livro adicionado com sucesso!', 'success')
       setShowAddModal(false)
       setFormData({ nome: '', autor: '', categoria: '', numero_copias: 1 })
       fetchBooks(currentPage)
     } catch (error) {
-      alert(`❌ ${error.response?.data || 'Erro ao adicionar livro'}`)
+      showToast(error.response?.data || 'Erro ao adicionar livro', 'error')
     }
   }
 
@@ -83,13 +83,13 @@ function ManageBooks() {
       await axios.put(`http://localhost:8080/api/admin/books/${editingBook.id}`, formData, {
         withCredentials: true
       })
-      alert('✅ Livro atualizado com sucesso!')
+      showToast('Livro atualizado com sucesso!', 'success')
       setShowEditModal(false)
       setEditingBook(null)
       setFormData({ nome: '', autor: '', categoria: '', numero_copias: 1 })
       fetchBooks(currentPage)
     } catch (error) {
-      alert(`❌ ${error.response?.data || 'Erro ao atualizar livro'}`)
+      showToast(error.response?.data || 'Erro ao atualizar livro', 'error')
     }
   }
 
@@ -101,10 +101,10 @@ function ManageBooks() {
       await axios.delete(`http://localhost:8080/api/admin/books/${bookId}`, {
         withCredentials: true
       })
-      alert('✅ Livro deletado com sucesso!')
+      showToast('Livro deletado com sucesso!', 'success')
       fetchBooks(currentPage)
     } catch (error) {
-      alert(`❌ ${error.response?.data || 'Erro ao deletar livro'}`)
+      showToast(error.response?.data || 'Erro ao deletar livro', 'error')
     }
   }
 

@@ -1,9 +1,9 @@
 import { createContext, useContext, useState } from 'react'
 import Toast from '../components/Toast'
 
-const ToastContext = createContext()
+const ToastContext = createContext(null)
 
-export function ToastProvider({ children }) {
+export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([])
 
   const showToast = (message, type = 'success') => {
@@ -18,7 +18,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed top-4 right-4 z-[9999] space-y-2">
+      <div className="fixed top-4 right-4 z-[9999] space-y-2 px-4">
         {toasts.map(toast => (
           <Toast
             key={toast.id}
@@ -32,6 +32,10 @@ export function ToastProvider({ children }) {
   )
 }
 
-export function useToast() {
-  return useContext(ToastContext)
+export const useToast = () => {
+  const context = useContext(ToastContext)
+  if (!context) {
+    throw new Error('useToast must be used within ToastProvider')
+  }
+  return context
 }

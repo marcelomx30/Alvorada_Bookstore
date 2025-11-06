@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
+import { useToast } from '../contexts/ToastContext'
 
 function BookCatalog() {
   const { user, logout } = useAuth()
+  const { showToast } = useToast()
   const [books, setBooks] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
@@ -122,8 +124,8 @@ function BookCatalog() {
         { withCredentials: true }
       )
       
-      alert(`✅ Livro alugado com sucesso!\n\nDevolução até: ${response.data.rental.due_date}`)
-      
+     showToast(`Livro alugado com sucesso! Devolução até: ${response.data.rental.due_date}`, 'success')
+
       if (selectedCategory) {
         fetchBooksByCategory(currentPage)
       } else if (isSearching && searchQuery) {
@@ -134,7 +136,7 @@ function BookCatalog() {
       
     } catch (error) {
       const errorMsg = error.response?.data || 'Erro ao alugar livro. Tente novamente.'
-      alert(`❌ ${errorMsg}`)
+      showToast(errorMsg, 'error')
     } finally {
       setRentingBookId(null)
     }
