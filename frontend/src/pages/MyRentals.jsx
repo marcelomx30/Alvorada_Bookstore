@@ -1,14 +1,23 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import axios from 'axios'
 import { useToast } from '../contexts/ToastContext'
+import ConfirmModal from '../components/ConfirmModal'
+import axios from 'axios'
 
 function MyRentals() {
-  const { showToast } = useToast()
   const { user, logout } = useAuth()
+  const { showToast } = useToast()
   const [rentals, setRentals] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [confirmModal, setConfirmModal] = useState({ 
+    isOpen: false, 
+    title: '', 
+    message: '', 
+    rentalId: null,
+    bookName: '',
+    onConfirm: () => {} 
+  })
 
   useEffect(() => {
     fetchMyRentals()
@@ -29,20 +38,27 @@ function MyRentals() {
     }
   }
 
-  const handleReturnBook = async (rentalId, bookName) => {
-    if (!window.confirm(`Deseja devolver "${bookName}"?`)) {
-      return
-    }
-    try {
-      await axios.put(`http://localhost:8080/api/rentals/${rentalId}/return`, {}, {
-        withCredentials: true
-      })
-      fetchMyRentals()
-      showToast('Livro devolvido com sucesso!', 'success')
-    } catch (error) {
-      const errorMsg = error.response?.data || 'Erro ao devolver livro. Tente novamente.'
-      showToast(errorMsg, 'error')
-}
+  const handleReturnBook = (rentalId, bookName) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Confirmar Devolução',
+      message: `Deseja devolver "${bookName}"?`,
+      rentalId,
+      bookName,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }))
+        try {
+          await axios.put(`http://localhost:8080/api/rentals/${rentalId}/return`, {}, {
+            withCredentials: true
+          })
+          showToast('Livro devolvido com sucesso!', 'success')
+          fetchMyRentals()
+        } catch (error) {
+          const errorMsg = error.response?.data || 'Erro ao devolver livro'
+          showToast(errorMsg, 'error')
+        }
+      }
+    })
   }
 
   const getStatusColor = (status) => {
@@ -114,19 +130,14 @@ function MyRentals() {
                   </button>
                   <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                     <div className="py-2">
-                      <a href="/admin/books" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">
-                        📚 Gerenciar Livros
-                      </a>
-                      <a href="/admin/rentals" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">
-                        📋 Gerenciar Aluguéis
-                      </a>
-                      <a href="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">
-                        👥 Gerenciar Usuários
-                      </a>
+                      <a href="/admin/books" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">📚 Gerenciar Livros</a>
+                      <a href="/admin/rentals" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">📋 Gerenciar Aluguéis</a>
+                      <a href="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-alvorada-blue hover:text-white transition-colors">👥 Gerenciar Usuários</a>
                     </div>
                   </div>
                 </div>
-              )}            </div>
+              )}
+            </div>
             <div className="flex items-center space-x-4">
               <div className="text-right hidden md:block">
                 <p className="text-sm text-gray-600">Olá, <span className="font-semibold">{user?.name}</span></p>
@@ -237,7 +248,12 @@ function MyRentals() {
                       </div>
                       {rental.status === 'active' && (
                         <div className="mt-4 md:mt-0 md:ml-6">
-                          <button onClick={() => handleReturnBook(rental.id, rental.book_name)} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold whitespace-nowrap">Devolver Livro</button>
+                          <button
+                            onClick={() => handleReturnBook(rental.id, rental.book_name)}
+                            className="w-full md:w-auto px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold whitespace-nowrap"
+                          >
+                            ✅ Devolver Livro
+                          </button>
                         </div>
                       )}
                     </div>
@@ -248,6 +264,16 @@ function MyRentals() {
           </div>
         )}
       </main>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ isOpen: false, title: '', message: '', rentalId: null, bookName: '', onConfirm: () => {} })}
+        confirmText="Devolver"
+        type="success"
+      />
 
       <footer className="bg-gray-800 text-white py-8 mt-20">
         <div className="container mx-auto px-6 text-center">

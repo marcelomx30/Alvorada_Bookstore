@@ -18,13 +18,15 @@ function ManageUsers() {
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [userHistory, setUserHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const { showToast } = useToast()
   const [confirmModal, setConfirmModal] = useState({ 
     isOpen: false, 
     title: '', 
     message: '', 
+    rentalId: null,
+    bookName: '',
     onConfirm: () => {} 
   })
-
 
   useEffect(() => {
     if (user?.role !== 'admin') {
@@ -77,22 +79,26 @@ function ManageUsers() {
     setFilteredUsers(filtered)
   }
 
-  const handleToggleStatus = async (userId, userName, currentStatus) => {
-    const action = currentStatus ? 'desativar' : 'ativar'
-    if (!window.confirm(`Deseja ${action} o usuário "${userName}"?`)) {
-      return
+const handleToggleStatus = async (userId, userName, currentStatus) => {
+  const action = currentStatus ? 'desativar' : 'ativar'
+  setConfirmModal({
+    isOpen: true,
+    title: `${action.charAt(0).toUpperCase() + action.slice(1)} Usuário`,
+    message: `Deseja ${action} o usuário "${userName}"?`,
+    onConfirm: async () => {
+      setConfirmModal({ ...confirmModal, isOpen: false }) // Close modal first
+      try {
+        await axios.put(`http://localhost:8080/api/admin/users/${userId}/toggle`, {}, {
+          withCredentials: true
+        })
+        showToast(`Usuário ${currentStatus ? 'desativado' : 'ativado'} com sucesso!`, 'success')
+        fetchUsers()
+      } catch (error) {
+        showToast(error.response?.data || 'Erro ao alterar status do usuário', 'error')
+      }
     }
-
-    try {
-      await axios.put(`http://localhost:8080/api/admin/users/${userId}/toggle`, {}, {
-        withCredentials: true
-      })
-      showToast(`✅ Usuário ${currentStatus ? 'desativado' : 'ativado'} com sucesso!`, 'success')
-      fetchUsers()
-    } catch (error) {
-      showToast(`❌ ${error.response?.data || 'Erro ao alterar status do usuário'}`, 'error')
-    }
-  }
+  })
+}
 
   const fetchUserHistory = async (userId, userName) => {
     setSelectedUser({ id: userId, name: userName })
@@ -377,6 +383,15 @@ function ManageUsers() {
                           <p className="font-semibold text-green-600">{formatDate(rental.returned_at)}</p>
                         </div>
                       )}
+                          <ConfirmModal
+                            isOpen={confirmModal.isOpen}
+                            title={confirmModal.title}
+                            message={confirmModal.message}
+                            onConfirm={confirmModal.onConfirm}
+                            onCancel={() => setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => {} })}
+                            confirmText="Confirmar"
+                            type="warning"
+                          />
                     </div>
                     {rental.notes && (
                       <div className="mt-2 p-2 bg-gray-50 rounded text-sm">

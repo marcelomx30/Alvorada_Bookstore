@@ -1,0 +1,29 @@
+--- MyRentals.jsx.old
++++ MyRentals.jsx
+@@ -30,7 +30,20 @@
+   }
+ 
+   const handleReturnBook = async (rentalId, bookName) => {
+-    if (!window.confirm(`Deseja devolver "${bookName}"?`)) {
++    setConfirmModal({
++      isOpen: true,
++      title: 'Confirmar Devolução',
++      message: `Deseja devolver "${bookName}"?`,
++      rentalId,
++      bookName,
++      onConfirm: async () => {
++        try {
++          await axios.put(`http://localhost:8080/api/rentals/${rentalId}/return`, {}, {
++            withCredentials: true
++          })
++          showToast('Livro devolvido com sucesso!', 'success')
++          fetchRentals()
++        } catch (error) {
++          const errorMsg = error.response?.data || 'Erro ao devolver livro. Tente novamente.'
++          showToast(errorMsg, 'error')
++        } finally {
++          setConfirmModal({ isOpen: false, title: '', message: '', rentalId: null, bookName: '', onConfirm: () => {} })
++        }
++      }
++    })
+   }
