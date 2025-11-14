@@ -407,8 +407,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 **Marcelo Meireles Marques Filho**
 
 Email: marcelomx30@alu.ufc.br  
-LinkedIn: [linkedin.com/in/yourprofile](https://www.linkedin.com/in/marcelomx30/)  
-GitHub: [@yourusername](https://github.com/marcelomx30)
+LinkedIn: https://github.com/marcelomx30  
+GitHub: [@marcelomx30](https://github.com/marcelomx30)
 
 ## Acknowledgments
 
