@@ -39,33 +39,33 @@ function ManageBooks() {
     fetchBooks()
   }, [user, navigate, currentPage, searchQuery])
 
-  const fetchBooks = async () => {
-    setLoading(true)
-    try {
-      const params = { page: currentPage, limit: 50 }
-      if (searchQuery.trim()) {
-        params.search = searchQuery
-      }
-      const response = await axios.get('http://localhost:8080/api/books', {
-        params,
-        withCredentials: true
-      })
-      setBooks(response.data.books || [])
-      setTotalPages(response.data.total_pages || 1)
-      setTotalBooks(response.data.total || 0)
-    } catch (error) {
-      console.error('Error fetching books:', error)
-      showToast('Erro ao carregar livros', 'error')
-    } finally {
-      setLoading(false)
+const fetchBooks = async () => {
+  setLoading(true)
+  try {
+    const params = { page: currentPage, limit: 50 }
+    if (searchQuery.trim()) {
+      params.search = searchQuery
     }
+    const response = await axios.get('http://localhost:8080/api/books', {
+      params,
+      withCredentials: true
+    })
+    setBooks(response.data.books || [])
+    setTotalPages(response.data.totalPages || 1)  // Changed from total_pages
+    setTotalBooks(response.data.totalBooks || 0)  // Changed from total
+  } catch (error) {
+    console.error('Error fetching books:', error)
+    showToast('Erro ao carregar livros', 'error')
+  } finally {
+    setLoading(false)
   }
+}
 
   const handleAddBook = async (e) => {
     e.preventDefault()
-    console.log('Sending book data:', newBook)  // ADD THIS LINE
+    console.log('Sending book data:', newBook)
     try {
-      await axios.post('http://localhost:8080/api/books', newBook, {
+      await axios.post('http://localhost:8080/api/admin/books', newBook, {  // Changed from /api/books
         withCredentials: true
       })
       showToast('Livro adicionado com sucesso!', 'success')
@@ -73,7 +73,7 @@ function ManageBooks() {
       setNewBook({ nome: '', autor: '', categoria: '', numero_copias: 1 })
       fetchBooks()
     } catch (error) {
-      console.error('Error response:', error.response)  // ADD THIS LINE
+      console.error('Error response:', error.response)
       showToast(error.response?.data || 'Erro ao adicionar livro', 'error')
     }
   }
@@ -81,7 +81,7 @@ function ManageBooks() {
   const handleEditBook = async (e) => {
     e.preventDefault()
     try {
-      await axios.put(`http://localhost:8080/api/books/${currentBook.id}`, currentBook, {
+      await axios.put(`http://localhost:8080/api/admin/books/${currentBook.id}`, currentBook, {  // Changed
         withCredentials: true
       })
       showToast('Livro atualizado com sucesso!', 'success')
@@ -101,7 +101,7 @@ function ManageBooks() {
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, isOpen: false }))
         try {
-          await axios.delete(`http://localhost:8080/api/books/${bookId}`, {
+          await axios.delete(`http://localhost:8080/api/admin/books/${bookId}`, {  // Changed
             withCredentials: true
           })
           showToast('Livro deletado com sucesso!', 'success')
