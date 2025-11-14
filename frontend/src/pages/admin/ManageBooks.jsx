@@ -31,13 +31,13 @@ function ManageBooks() {
     onConfirm: () => {} 
   })
 
-  useEffect(() => {
-    if (user?.role !== 'admin') {
-      navigate('/')
-      return
-    }
-    fetchBooks()
-  }, [user, navigate, currentPage, searchQuery])
+useEffect(() => {
+  if (user?.role !== 'admin') {
+    navigate('/')
+    return
+  }
+  fetchBooks()
+}, [user, navigate, currentPage])  // Removed searchQuery
 
 const fetchBooks = async () => {
   setLoading(true)
@@ -46,15 +46,18 @@ const fetchBooks = async () => {
     if (searchQuery.trim()) {
       params.search = searchQuery
     }
+    console.log('Fetching books with params:', params)  // ADD THIS
     const response = await axios.get('http://localhost:8080/api/books', {
       params,
       withCredentials: true
     })
+    console.log('Response:', response.data)  // ADD THIS
     setBooks(response.data.books || [])
-    setTotalPages(response.data.totalPages || 1)  // Changed from total_pages
-    setTotalBooks(response.data.totalBooks || 0)  // Changed from total
+    setTotalPages(response.data.totalPages || 1)
+    setTotalBooks(response.data.totalBooks || 0)
   } catch (error) {
     console.error('Error fetching books:', error)
+    console.error('Error response:', error.response?.data)  // ADD THIS
     showToast('Erro ao carregar livros', 'error')
   } finally {
     setLoading(false)
@@ -178,13 +181,15 @@ const fetchBooks = async () => {
               type="text"
               placeholder="Buscar por título, autor ou categoria..."
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setCurrentPage(1)
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  setCurrentPage(1)
+                  fetchBooks()
+                }
               }}
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent"
-            />
-          </div>
+            />          </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-4 mb-4">
