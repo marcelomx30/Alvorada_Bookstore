@@ -33,14 +33,13 @@ type CategoryCount struct{
 	Count int `json:"count"`
 }
 
-type Book struct{
-	ID int `json:"id"`
-	Nome string `json:"nome"`
-	Categoria string `json:"categoria"`
-	Autor string `json:"autor"`
-	NumeroCopias int `json:"numero_copias"`
-	Available int `json:"available_copies"`
-
+type Book struct {
+	ID              int    `json:"id"`
+	Nome            string `json:"nome"`
+	Autor           string `json:"autor"`
+	Categoria       string `json:"categoria"`
+	NumeroCopias    int    `json:"total_copies"`      // Changed JSON tag
+	Available       int    `json:"available_copies"`  // Changed JSON tag
 }
 
 type User struct {
@@ -467,33 +466,80 @@ func getBooks(w http.ResponseWriter, req *http.Request) {
 	// Use helper function for pagination
 	pageNum, limit, offset := getPaginationParams(req)
 	
-	// Get total count
+	// Get search query parameter
+	searchQuery := req.URL.Query().Get("search")
+	
+	// Build the query based on whether there's a search
 	var totalBooks int
-	err := db.QueryRow("SELECT COUNT(*) FROM books").Scan(&totalBooks)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	var rows *sql.Rows
+	var err error
+	
+	if searchQuery != "" {
+		// Count with search
+		countQuery := `SELECT COUNT(*) FROM books b 
+			WHERE LOWER(b.nome) LIKE LOWER($1) 
+			OR LOWER(b.autor) LIKE LOWER($1) 
+			OR LOWER(b.categoria) LIKE LOWER($1)`
+		searchPattern := "%" + searchQuery + "%"
+		err = db.QueryRow(countQuery, searchPattern).Scan(&totalBooks)
+		if err != nil {
+			log.Printf("Error counting books: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		
+		// Query with search
+		query := `
+			SELECT
+				b.id,
+				b.nome,
+				b.categoria,
+				b.autor,
+				b.numero_copias,
+				b.numero_copias - COALESCE((
+					SELECT COUNT(*)
+					FROM rentals r
+					WHERE r.book_id = b.id AND r.status = 'active'
+				), 0) as available_copies
+			FROM books b
+			WHERE LOWER(b.nome) LIKE LOWER($1) 
+				OR LOWER(b.autor) LIKE LOWER($1) 
+				OR LOWER(b.categoria) LIKE LOWER($1)
+			ORDER BY b.nome
+			LIMIT $2 OFFSET $3
+		`
+		rows, err = db.Query(query, searchPattern, limit, offset)
+	} else {
+		// Count without search
+		err = db.QueryRow("SELECT COUNT(*) FROM books").Scan(&totalBooks)
+		if err != nil {
+			log.Printf("Error counting books: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		
+		// Query without search
+		query := `
+			SELECT
+				b.id,
+				b.nome,
+				b.categoria,
+				b.autor,
+				b.numero_copias,
+				b.numero_copias - COALESCE((
+					SELECT COUNT(*)
+					FROM rentals r
+					WHERE r.book_id = b.id AND r.status = 'active'
+				), 0) as available_copies
+			FROM books b
+			ORDER BY b.nome
+			LIMIT $1 OFFSET $2
+		`
+		rows, err = db.Query(query, limit, offset)
 	}
 	
-	// Get paginated books
-query := `
-	SELECT 
-		b.id, 
-		b.nome, 
-		b.categoria, 
-		b.autor,
-		b.numero_copias,
-		b.numero_copias - COALESCE((
-			SELECT COUNT(*) 
-			FROM rentals r 
-			WHERE r.book_id = b.id AND r.status = 'active'
-		), 0) as available_copies
-	FROM books b 
-	ORDER BY b.nome 
-	LIMIT $1 OFFSET $2
-`
-	rows, err := db.Query(query, limit, offset)
 	if err != nil {
+		log.Printf("Error querying books: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -504,6 +550,7 @@ query := `
 		var book Book
 		err := rows.Scan(&book.ID, &book.Nome, &book.Categoria, &book.Autor, &book.NumeroCopias, &book.Available)
 		if err != nil {
+			log.Printf("Error scanning book: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
