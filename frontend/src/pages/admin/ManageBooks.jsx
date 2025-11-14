@@ -19,7 +19,7 @@ function ManageBooks() {
     nome: '',
     autor: '',
     categoria: '',
-    total_copies: 1
+    numero_copias: 1
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -63,15 +63,17 @@ function ManageBooks() {
 
   const handleAddBook = async (e) => {
     e.preventDefault()
+    console.log('Sending book data:', newBook)  // ADD THIS LINE
     try {
       await axios.post('http://localhost:8080/api/books', newBook, {
         withCredentials: true
       })
       showToast('Livro adicionado com sucesso!', 'success')
       setShowAddModal(false)
-      setNewBook({ nome: '', autor: '', categoria: '', total_copies: 1 })
+      setNewBook({ nome: '', autor: '', categoria: '', numero_copias: 1 })
       fetchBooks()
     } catch (error) {
+      console.error('Error response:', error.response)  // ADD THIS LINE
       showToast(error.response?.data || 'Erro ao adicionar livro', 'error')
     }
   }
@@ -97,6 +99,7 @@ function ManageBooks() {
       title: 'Deletar Livro',
       message: `Tem certeza que deseja deletar "${bookName}"? Esta ação não pode ser desfeita.`,
       onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }))
         try {
           await axios.delete(`http://localhost:8080/api/books/${bookId}`, {
             withCredentials: true
@@ -105,8 +108,6 @@ function ManageBooks() {
           fetchBooks()
         } catch (error) {
           showToast(error.response?.data || 'Erro ao deletar livro', 'error')
-        } finally {
-          setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: () => {} })
         }
       }
     })
@@ -292,7 +293,7 @@ function ManageBooks() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número de Cópias *</label>
-                <input required type="number" min="1" value={newBook.total_copies} onChange={(e) => setNewBook({...newBook, total_copies: parseInt(e.target.value)})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
+                <input required type="number" min="1" value={newBook.numero_copias} onChange={(e) => setNewBook({...newBook, numero_copias: parseInt(e.target.value)})} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-alvorada-blue focus:border-transparent" />
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold">Adicionar</button>

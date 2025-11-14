@@ -904,63 +904,48 @@ func requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 
 func addBook(w http.ResponseWriter, req *http.Request){
 	w.Header().Set("Content-Type", "application/json")
-
 	var bookReq CreateBookRequest
 	err:= json.NewDecoder(req.Body).Decode(&bookReq)
 	if err != nil{
-		http.Error(w, "Invalid Request Body", http.StatusBadRequest)
+		http.Error(w, "Dados inválidos", http.StatusBadRequest)
 		return
 	}
-
 	if bookReq.Nome == "" {
-		http.Error(w, "Nome is required", http.StatusBadRequest)
+		http.Error(w, "Nome é obrigatório", http.StatusBadRequest)
 		return
 	}
-
-	if bookReq.Nome == "" {
-		http.Error(w, "Nome is required", http.StatusBadRequest)
-		return
-	}
-
 	if bookReq.Autor == "" {
-		http.Error(w, "Autor is required", http.StatusBadRequest)
+		http.Error(w, "Autor é obrigatório", http.StatusBadRequest)
 		return
 	}
-
 	if bookReq.Categoria == "" {
-		http.Error(w, "Categoria is required", http.StatusBadRequest)
+		http.Error(w, "Categoria é obrigatória", http.StatusBadRequest)
 		return
 	}
-
 	if bookReq.NumeroCopias < 1 {
-		http.Error(w, "Number of copies must be at least 1", http.StatusBadRequest)
+		http.Error(w, "Número de cópias deve ser pelo menos 1", http.StatusBadRequest)
 		return
 	}
-
+	
 	var bookID int
-	err = db.QueryRow(`INSERT INTO books (nome, autor, categoria, numero_copias) 
-		VALUES ($1, $2, $3, $4) 
+	err = db.QueryRow(`INSERT INTO books (nome, autor, categoria, numero_copias, disponivel)
+		VALUES ($1, $2, $3, $4, $4)
 		RETURNING id
 		`, bookReq.Nome, bookReq.Autor, bookReq.Categoria, bookReq.NumeroCopias).Scan(&bookID)
-
+	
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error adding book: %v", err)
+		http.Error(w, "Erro ao adicionar livro ao banco de dados", http.StatusInternalServerError)
 		return
 	}
-
-	createdBook := Book{
-		ID:           bookID,
-		Nome:         bookReq.Nome,
-		Autor:        bookReq.Autor,
-		Categoria:    bookReq.Categoria,
-		NumeroCopias: bookReq.NumeroCopias,
-		Available:    bookReq.NumeroCopias,
+	
+	response := map[string]interface{}{
+		"message": "Livro adicionado com sucesso",
+		"book_id": bookID,
 	}
-
-	json.NewEncoder(w).Encode(map[string]interface{}{
-	"message": "Book added successfully",
-	"book":    createdBook,
-})
+	
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
 }
 
 func updateBook(w http.ResponseWriter, req *http.Request){
