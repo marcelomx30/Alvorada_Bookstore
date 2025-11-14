@@ -1,0 +1,11 @@
+# Binaries
+main
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go
+*.test
+*.out
+go.work
