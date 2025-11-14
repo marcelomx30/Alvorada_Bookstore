@@ -1,3 +1,4 @@
+import { API_URL } from '../config'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
@@ -16,7 +17,7 @@ function ForgotPassword() {
     setLoading(true)
 
     try {
-      await axios.post('http://localhost:8080/api/auth/forgot-password', { email })
+      await axios.post('${API_URL}/api/auth/forgot-password', { email })
       setEmailSent(true)
       setMessage('Instruções enviadas! Verifique seu email.')
     } catch (err) {

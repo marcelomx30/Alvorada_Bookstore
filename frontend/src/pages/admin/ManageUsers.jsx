@@ -1,3 +1,4 @@
+import { API_URL } from '../../config'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -41,7 +42,7 @@ function ManageUsers() {
   const fetchUsers = async () => {
     setLoading(true)
     try {
-      const response = await axios.get('http://localhost:8080/api/admin/users', {
+      const response = await axios.get('${API_URL}/api/admin/users', {
         withCredentials: true
       })
       setUsers(response.data || [])
@@ -86,7 +87,7 @@ function ManageUsers() {
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, isOpen: false }))
         try {
-          await axios.put(`http://localhost:8080/api/admin/users/${userId}/toggle`, {}, {
+          await axios.put(`${API_URL}/api/admin/users/${userId}/toggle`, {}, {
             withCredentials: true
           })
           showToast(`Usuário ${currentStatus ? 'desativado' : 'ativado'} com sucesso!`, 'success')
@@ -103,7 +104,7 @@ function ManageUsers() {
     setShowHistoryModal(true)
     setLoadingHistory(true)
     try {
-      const response = await axios.get(`http://localhost:8080/api/admin/users/${userId}/rentals`, {
+      const response = await axios.get(`${API_URL}/api/admin/users/${userId}/rentals`, {
         withCredentials: true
       })
       setUserHistory(response.data || [])

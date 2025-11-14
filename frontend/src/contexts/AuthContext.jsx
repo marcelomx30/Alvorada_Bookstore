@@ -1,3 +1,4 @@
+import { API_URL } from '../config'
 import { createContext, useContext, useState, useEffect } from 'react'
 import axios from 'axios'
 
@@ -13,7 +14,7 @@ export function AuthProvider({ children }) {
 
   const checkAuth = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/auth/me', {
+      const response = await axios.get('${API_URL}/api/auth/me', {
         withCredentials: true
       })
       setUser(response.data)
@@ -25,7 +26,7 @@ export function AuthProvider({ children }) {
   }
 
   const login = async (email, password) => {
-    const response = await axios.post('http://localhost:8080/api/auth/login', 
+    const response = await axios.post('${API_URL}/api/auth/login', 
       { email, password },
       { withCredentials: true }
     )
@@ -34,7 +35,7 @@ export function AuthProvider({ children }) {
   }
 
   const register = async (name, email, phone, password) => {
-    const response = await axios.post('http://localhost:8080/api/auth/register',
+    const response = await axios.post('${API_URL}/api/auth/register',
       { name, email, phone, password },
       { withCredentials: true }
     )
@@ -43,7 +44,7 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
-    await axios.post('http://localhost:8080/api/auth/logout', {}, {
+    await axios.post('${API_URL}/api/auth/logout', {}, {
       withCredentials: true
     })
     setUser(null)

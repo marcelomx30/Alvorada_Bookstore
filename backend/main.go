@@ -10,7 +10,7 @@ import(
 	"strconv"
 	"sync"
 	"time"
-	
+	"os"	
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	_ "github.com/lib/pq"
@@ -1489,21 +1489,29 @@ func getUserRentalHistory(w http.ResponseWriter, req *http.Request){
 }
 
 func main(){
-	connStr := "postgres://library:library@localhost:5432/alvorada_library?sslmode=disable"
-
+connStr := os.Getenv("DATABASE_URL")
+	if connStr == "" {
+		connStr = "postgres://library:library@localhost:5432/alvorada_library?sslmode=disable"
+	}
+	
 	var err error
 	db, err = sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatal("Error connecting to the database:", err)
 	}
 	defer db.Close()
-
 	if err = db.Ping(); err !=nil {
 		log.Fatal("Error pinging database:", err)
 	}
 	
 	log.Println("✓ Connected to the database successfully ✓")
-
+	
+	// Get port from environment
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	
 	r := mux.NewRouter()
 	//Auth Routes
 	r.HandleFunc("/api/auth/register", register).Methods("POST")
@@ -1533,15 +1541,19 @@ r.HandleFunc("/api/admin/users", requireAdmin(getAllUsers)).Methods("GET")
 r.HandleFunc("/api/admin/users/{id}/toggle", requireAdmin(toggleUserStatus)).Methods("PUT")
 r.HandleFunc("/api/admin/users/{id}/rentals", requireAdmin(getUserRentalHistory)).Methods("GET")
 
+allowedOrigins := []string{"http://localhost:5173"}
+if frontendURL := os.Getenv("FRONTEND_URL"); frontendURL != "" {
+	allowedOrigins = append(allowedOrigins, frontendURL)
+}
+	
 c := cors.New(cors.Options{
-	AllowedOrigins:   []string{"http://localhost:5173"},
+	AllowedOrigins:   allowedOrigins,
 	AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 	AllowedHeaders:   []string{"Content-Type"},
 	AllowCredentials: true,
 })
 
-	handler := c.Handler(r)
-
-	fmt.Println("Server starting on port 8080...")
-	http.ListenAndServe(":8080", handler)
+handler := c.Handler(r)
+log.Printf("Server is running on port %s\n", port)
+log.Fatal(http.ListenAndServe(":"+port, handler))
 }

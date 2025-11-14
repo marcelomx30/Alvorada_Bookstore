@@ -1,3 +1,4 @@
+import { API_URL } from '../config'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
@@ -49,7 +50,7 @@ function BookCatalog() {
         params.category = selectedCategory
       }
 
-      const response = await axios.get('http://localhost:8080/api/books', {
+      const response = await axios.get('${API_URL}/api/books', {
         params,
         withCredentials: true
       })
@@ -66,7 +67,7 @@ function BookCatalog() {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/api/books/categories', {
+      const response = await axios.get('${API_URL}/api/books/categories', {
         withCredentials: true
       })
       setCategories(response.data || [])
@@ -84,7 +85,7 @@ function BookCatalog() {
       bookName,
       onConfirm: async () => {
         try {
-          const response = await axios.post('http://localhost:8080/api/rentals', 
+          const response = await axios.post('${API_URL}/api/rentals', 
             { book_id: bookId },
             { withCredentials: true }
           )

@@ -1,3 +1,4 @@
+import { API_URL } from '../config'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
@@ -26,7 +27,7 @@ function MyRentals() {
   const fetchMyRentals = async () => {
     setLoading(true)
     try {
-      const response = await axios.get('http://localhost:8080/api/rentals/my', {
+      const response = await axios.get('${API_URL}/api/rentals/my', {
         withCredentials: true
       })
       setRentals(response.data || [])
@@ -48,7 +49,7 @@ function MyRentals() {
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, isOpen: false }))
         try {
-          await axios.put(`http://localhost:8080/api/rentals/${rentalId}/return`, {}, {
+          await axios.put(`${API_URL}/api/rentals/${rentalId}/return`, {}, {
             withCredentials: true
           })
           showToast('Livro devolvido com sucesso!', 'success')

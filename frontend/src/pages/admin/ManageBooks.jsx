@@ -1,3 +1,4 @@
+import { API_URL } from '../../config'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
@@ -47,7 +48,7 @@ const fetchBooks = async () => {
       params.search = searchQuery
     }
     console.log('Fetching books with params:', params)  // ADD THIS
-    const response = await axios.get('http://localhost:8080/api/books', {
+    const response = await axios.get('${API_URL}/api/books', {
       params,
       withCredentials: true
     })
@@ -68,7 +69,7 @@ const fetchBooks = async () => {
     e.preventDefault()
     console.log('Sending book data:', newBook)
     try {
-      await axios.post('http://localhost:8080/api/admin/books', newBook, {  // Changed from /api/books
+      await axios.post('${API_URL}/api/admin/books', newBook, {  // Changed from /api/books
         withCredentials: true
       })
       showToast('Livro adicionado com sucesso!', 'success')
@@ -84,7 +85,7 @@ const fetchBooks = async () => {
   const handleEditBook = async (e) => {
     e.preventDefault()
     try {
-      await axios.put(`http://localhost:8080/api/admin/books/${currentBook.id}`, currentBook, {  // Changed
+      await axios.put(`${API_URL}/api/admin/books/${currentBook.id}`, currentBook, {  // Changed
         withCredentials: true
       })
       showToast('Livro atualizado com sucesso!', 'success')
@@ -104,7 +105,7 @@ const fetchBooks = async () => {
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, isOpen: false }))
         try {
-          await axios.delete(`http://localhost:8080/api/admin/books/${bookId}`, {  // Changed
+          await axios.delete(`${API_URL}/api/admin/books/${bookId}`, {  // Changed
             withCredentials: true
           })
           showToast('Livro deletado com sucesso!', 'success')

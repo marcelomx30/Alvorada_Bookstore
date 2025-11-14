@@ -1,3 +1,4 @@
+import { API_URL } from '../../config'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
@@ -64,7 +65,7 @@ function ManageRentals() {
   const fetchRentals = async () => {
     setLoading(true)
     try {
-      const response = await axios.get('http://localhost:8080/api/admin/rentals', {
+      const response = await axios.get('${API_URL}/api/admin/rentals', {
         withCredentials: true
       })
       setRentals(response.data || [])
@@ -78,7 +79,7 @@ function ManageRentals() {
   const fetchUsersAndBooks = async () => {
     setLoadingModal(true)
     try {
-      const booksResponse = await axios.get('http://localhost:8080/api/books?limit=1000')
+      const booksResponse = await axios.get('${API_URL}/api/books?limit=1000')
       setBooks(booksResponse.data.books || [])
       
       const uniqueUsers = []
@@ -144,7 +145,7 @@ function ManageRentals() {
       return
     }
     try {
-      await axios.post('http://localhost:8080/api/admin/rentals', {
+      await axios.post('${API_URL}/api/admin/rentals', {
         user_id: parseInt(rentFormData.user_id),
         book_id: parseInt(rentFormData.book_id),
         notes: rentFormData.notes
@@ -171,7 +172,7 @@ function ManageRentals() {
       message: `Marcar "${bookName}" (alugado por ${userName}) como devolvido?`,
       onConfirm: async () => {
         try {
-          await axios.put(`http://localhost:8080/api/admin/rentals/${rentalId}/return`, {}, {
+          await axios.put(`${API_URL}/api/admin/rentals/${rentalId}/return`, {}, {
             withCredentials: true
           })
           showToast('Livro marcado como devolvido!', 'success')
