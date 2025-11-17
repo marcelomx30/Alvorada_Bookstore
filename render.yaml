@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: alvorada-backend
+    runtime: go
+    buildCommand: cd backend && go build -o main .
+    startCommand: cd backend && ./main
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: PORT
+        value: 8080
+      - key: FRONTEND_URL
+        sync: false
+
+  - type: web
+    name: alvorada-frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
