@@ -153,7 +153,8 @@ func createSession(w http.ResponseWriter, user *User) string {
 		Path:     "/",
 		MaxAge:   7 * 24 * 60 * 60,
 		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
+		Secure: true,
+		SameSite: http.SameSiteNoneMode,
 	})
 	
 	return sessionID
@@ -175,6 +176,9 @@ func deleteSession(w http.ResponseWriter, req *http.Request) {
 		Value:  "",
 		Path:   "/",
 		MaxAge: -1,
+		HttpOnly: true,
+		Secure: true, 
+		SameSite: http.SameSiteNoneMode,
 	})
 }
 
