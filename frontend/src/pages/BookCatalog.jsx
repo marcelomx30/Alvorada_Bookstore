@@ -56,7 +56,7 @@ function BookCatalog() {
       })
 
       setBooks(response.data.books || [])
-      setTotalPages(response.data.total_pages || 1)
+      setTotalPages(response.data.totalPages || 1)
     } catch (error) {
       console.error('Error fetching books:', error)
       showToast('Erro ao carregar livros', 'error')
