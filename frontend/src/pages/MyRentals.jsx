@@ -27,7 +27,7 @@ function MyRentals() {
   const fetchMyRentals = async () => {
     setLoading(true)
     try {
-      const response = await axios.get('${API_URL}/api/rentals/my', {
+      const response = await axios.get(`${API_URL}/api/rentals/my`), {
         withCredentials: true
       })
       setRentals(response.data || [])
@@ -49,7 +49,7 @@ function MyRentals() {
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, isOpen: false }))
         try {
-          await axios.put(`${API_URL}/api/rentals/${rentalId}/return`, {}, {
+          await axios.put(`${API_URL}/api/rentals/${rentalId}/return`), {}, {
             withCredentials: true
           })
           showToast('Livro devolvido com sucesso!', 'success')

@@ -50,7 +50,7 @@ function BookCatalog() {
         params.category = selectedCategory
       }
 
-      const response = await axios.get('${API_URL}/api/books', {
+      const response = await axios.get(`${API_URL}/api/books`), {
         params,
         withCredentials: true
       })
@@ -67,7 +67,7 @@ function BookCatalog() {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('${API_URL}/api/books/categories', {
+      const response = await axios.get(`${API_URL}/api/books/categories`), {
         withCredentials: true
       })
       setCategories(response.data || [])
@@ -85,7 +85,7 @@ function BookCatalog() {
       bookName,
       onConfirm: async () => {
         try {
-          const response = await axios.post('${API_URL}/api/rentals', 
+          const response = await axios.post(`${API_URL}/api/rentals`), 
             { book_id: bookId },
             { withCredentials: true }
           )
