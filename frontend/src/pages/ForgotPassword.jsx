@@ -17,7 +17,7 @@ function ForgotPassword() {
     setLoading(true)
 
     try {
-      await axios.post(`${API_URL}/api/auth/forgot-password`), { email })
+      await axios.post(`${API_URL}/api/auth/forgot-password`, { email })
       setEmailSent(true)
       setMessage('Instruções enviadas! Verifique seu email.')
     } catch (err) {
