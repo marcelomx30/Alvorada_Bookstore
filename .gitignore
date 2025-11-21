@@ -16,3 +16,11 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+node_modules/
+package.json
+package-lock.json
+server.cjs
+node_modules/
+package.json
+package-lock.json
+server.cjs
