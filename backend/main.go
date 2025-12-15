@@ -1545,9 +1545,9 @@ r.HandleFunc("/api/admin/users", requireAdmin(getAllUsers)).Methods("GET")
 r.HandleFunc("/api/admin/users/{id}/toggle", requireAdmin(toggleUserStatus)).Methods("PUT")
 r.HandleFunc("/api/admin/users/{id}/rentals", requireAdmin(getUserRentalHistory)).Methods("GET")
 
-allowedOrigins := []string{"http://localhost:5173"}
-if frontendURL := os.Getenv("FRONTEND_URL"); frontendURL != "" {
-	allowedOrigins = append(allowedOrigins, frontendURL)
+allowedOrigins := []string{
+    "http://localhost:5173",  // Vite dev server
+    "http://localhost:3000",  // Local production build
 }
 	
 c := cors.New(cors.Options{
